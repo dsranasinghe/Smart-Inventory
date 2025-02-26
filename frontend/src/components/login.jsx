@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -18,16 +18,16 @@ import {
   InputRightElement,
   IconButton,
 } from '@chakra-ui/react';
-import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons'; // Import eye icons
+import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import loginImage from '../assets/login.png';
 
 const Login = () => {
-  const { login } = useAuth(); // Access the login function from AuthContext
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
+  const [showPassword, setShowPassword] = useState(false);
   const toast = useToast();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,23 +38,36 @@ const Login = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      // Check if the response is OK
       if (!response.ok) {
-        const errorData = await response.text(); // Get the response as text
+        const errorData = await response.text();
         throw new Error(errorData || 'Login failed');
       }
 
-      // Parse the JSON response
       const data = await response.json();
 
-       // Save the token to localStorage
-    localStorage.setItem('token', data.token); // Save the token
-
-    // Debugging: Log the token
-    console.log('Token saved to localStorage:', data.token);
+      // Save the token to localStorage
+      localStorage.setItem('token', data.token);
 
       // Save user data in context
       login(data.user);
+
+      // Redirect based on role
+      switch (data.user.role) {
+        case 'admin':
+          navigate('/admin');
+          break;
+        case 'manager':
+          navigate('/manager');
+          break;
+        case 'staff':
+          navigate('/staff');
+          break;
+        case 'supplier':
+          navigate('/supplier/:supplierId');
+          break;
+        default:
+          navigate('/');
+      }
 
       // Show success toast
       toast({
@@ -64,9 +77,6 @@ const Login = () => {
         duration: 5000,
         isClosable: true,
       });
-
-      // Redirect to the admin page
-      navigate('/admin'); // Use navigate to redirect
     } catch (error) {
       toast({
         title: 'Error',
@@ -105,7 +115,7 @@ const Login = () => {
                 <FormLabel color="purple.700">Password</FormLabel>
                 <InputGroup>
                   <Input
-                    type={showPassword ? 'text' : 'password'} // Toggle between text and password
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -117,7 +127,7 @@ const Login = () => {
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                       icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
                       size="sm"
-                      onClick={() => setShowPassword(!showPassword)} // Toggle password visibility
+                      onClick={() => setShowPassword(!showPassword)}
                       variant="ghost"
                       color="purple.500"
                     />

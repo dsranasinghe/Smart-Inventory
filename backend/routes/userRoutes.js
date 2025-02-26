@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getAllUsers , getUserById } from '../controllers/userController.js';
+import { register, login, getAllUsers , getUserById , deleteUser } from '../controllers/userController.js';
 import { authenticate, isAdmin } from '../middleware/authMddleware.js';
 
 
@@ -16,5 +16,7 @@ router.get('/users', authenticate, isAdmin, getAllUsers);
 
 // Get a single user by ID (admin only)
 router.get('/users/:userId', authenticate, isAdmin, getUserById);
+
+router.delete('/api/users/:id', authenticate, isAdmin, deleteUser);
 
 export default router;

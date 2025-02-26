@@ -1,8 +1,9 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+import { Types } from 'mongoose';
 
 // Register a new user
-export const register = async (req, res) => {
+export const register = async (req, res) => { 
   try {
     const { username, email, password, role } = req.body;
 
@@ -50,7 +51,16 @@ export const login = async (req, res) => {
       expiresIn: '1h',
     });
 
-    res.status(200).json({ message: 'Login successful', token, user });
+  // Return the token and user data (excluding the password)
+  res.status(200).json({
+    token,
+    user: {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    },
+  });
+  
   } catch (error) {
     res.status(500).json({ message: 'Error logging in', error });
   }
@@ -76,5 +86,25 @@ export const getUserById = async (req, res) => {
     res.status(200).json(user); // Return the user object directly
   } catch (error) {
     res.status(500).json({ message: 'Error fetching user', error });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Check if the ID is a valid ObjectId
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

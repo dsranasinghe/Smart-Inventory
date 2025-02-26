@@ -12,6 +12,7 @@ import {
   Divider
 } from '@chakra-ui/react';
 
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import registerImage from '../assets/login.png';
 
@@ -23,19 +24,24 @@ const Register = () => {
     password: '',
     role: 'user', // Default role
   });
+  const navigate = useNavigate(); 
 
   const toast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/register', {
+      const token = localStorage.getItem('token'); // Get the token from storage
+      const response = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // Include the token
+        },
         body: JSON.stringify(formData),
       });
       const data = await response.json();
-
+  
       if (response.ok) {
         toast({
           title: 'Registration Successful',
@@ -53,6 +59,9 @@ const Register = () => {
           isClosable: true,
         });
       }
+
+      navigate('/admin'); 
+
     } catch (error) {
       toast({
         title: 'Error',
@@ -64,7 +73,7 @@ const Register = () => {
       console.error('Error:', error);
     }
   };
-
+ 
   return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bg="#f3e8ff">
       <Box display="flex" bg="white" boxShadow="xl" borderRadius="lg" overflow="hidden" width={{ base: '90%', md: '60%', lg: '50%' }}>

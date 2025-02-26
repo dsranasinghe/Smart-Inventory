@@ -46,7 +46,7 @@ const HomePage = () => {
                   Get Started
                 </Button>
                 <Button variant="outline" colorScheme="blackAlpha" size="lg">
-                  Here in works
+                  How it works
                 </Button>
               </Flex>
             </VStack>
@@ -76,10 +76,8 @@ const HomePage = () => {
               time, all the time!
             </Text>
             <Flex gap={4}>
-              <Button bg="#3C0A44" colorScheme="white" size="lg" onClick={() => navigate('/register')}>
-                Register
-              </Button>
-              <Button variant="outline" colorScheme="#3C0A44" size="lg" onClick={() => navigate('/login')}>
+             
+              <Button  bg="#3C0A44" colorScheme="white" size="lg" onClick={() => navigate('/login')}>
                 Login
               </Button>
             </Flex>
