@@ -16,6 +16,16 @@ import {
 import { useNavigate } from "react-router-dom";
 import SearchComponent from "../components/search";
 
+// Function to generate a pastel color based on a string
+const getPastelColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = hash % 360; 
+  return `hsl(${hue}, 70%, 80%)`; 
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -52,7 +62,7 @@ const AdminDashboard = () => {
         }
 
         const data = await response.json();
-        console.log("Response Data:", data);
+        console.log("Response Data:", data); // Log the full response
 
         // Fix: Extract 'users' array if API response is wrapped in an object
         const usersArray = Array.isArray(data) ? data : data.users;
@@ -61,6 +71,7 @@ const AdminDashboard = () => {
           throw new Error("Invalid data format received");
         }
 
+        console.log("Users Array:", usersArray); // Log the users array
         setUsers(usersArray);
       } catch (err) {
         console.error("Error fetching users:", err);
@@ -81,8 +92,8 @@ const AdminDashboard = () => {
 
   // Filtered users based on search query
   const filteredUsers = users.filter((user) => {
-    const userName = user.name || ""; // Fallback to empty string if `name` is undefined
-    return userName.toLowerCase().includes(searchQuery.toLowerCase());
+    const username = user.username || ""; 
+    return username.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
@@ -114,22 +125,23 @@ const AdminDashboard = () => {
         <Table variant="simple">
           <Thead>
             <Tr>
-              <Th>Name</Th>
+              <Th>Username</Th>
               <Th>User Role</Th>
               <Th>Actions</Th>
             </Tr>
           </Thead>
           <Tbody>
             {filteredUsers.map((user) => (
-              <Tr key={user.id}>
+              <Tr key={user._id}>
                 <Td display="flex" alignItems="center">
                   <Avatar
                     size="sm"
-                    name={user.name}
+                    name={user.username}
                     src={user.profilePic}
+                    bg={getPastelColor(user.username)} // Set pastel background color
                     mr={2}
                   />
-                  <Text>{user.name}</Text>
+                  <Text>{user.username}</Text>
                 </Td>
                 <Td>
                   <Text>{user.role}</Text>
@@ -138,7 +150,8 @@ const AdminDashboard = () => {
                   <Button
                     size="sm"
                     colorScheme="blue"
-                    onClick={() => navigate(`/users/${user.id}`)} >
+                    onClick={() => navigate(`/users/${user._id}`)}
+                  >
                     View Profile
                   </Button>
                 </Td>

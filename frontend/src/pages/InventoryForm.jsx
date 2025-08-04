@@ -5,12 +5,10 @@ import { HStack } from "@chakra-ui/react";
 
 const InventoryPage = () => {
   return (
-  <HStack>
-    <Sidebar />
-<InventoryForm />
-  </HStack>
-      
-    
+    <HStack>
+      <Sidebar />
+      <InventoryForm />
+    </HStack>
   );
 };
 

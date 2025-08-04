@@ -16,6 +16,8 @@ import {
 import { FiMenu } from "react-icons/fi";
 import { FaBox, FaShoppingCart, FaLayerGroup } from "react-icons/fa";
 import { SunIcon, MoonIcon } from "@chakra-ui/icons";
+import Sidebar from "../components/sidebar";
+
 
 const Dashboard = () => {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -26,38 +28,7 @@ const Dashboard = () => {
   return (
     <Flex bg={bgColor} minH="100vh" p={4}>
       {/* Sidebar */}
-      <VStack
-        bg={cardBgColor}
-        w={{ base: "full", md: "250px" }}
-        p={4}
-        spacing={6}
-        boxShadow="md"
-        borderRadius="md"
-      >
-        <IconButton
-          icon={<FiMenu />}
-          aria-label="Menu"
-          size="lg"
-          variant="ghost"
-        />
-        <VStack align="start" w="full">
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Dashboard
-          </Button>
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Inventory
-          </Button>
-        </VStack>
-        <Spacer />
-        <VStack align="start" w="full">
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Settings
-          </Button>
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Log out
-          </Button>
-        </VStack>
-      </VStack>
+      <Sidebar userRole="staff" />
 
       {/* Main Content */}
       <VStack flex={1} p={6} spacing={6}>
