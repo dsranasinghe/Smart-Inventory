@@ -89,6 +89,15 @@ export const getUserById = async (req, res) => {
   }
 };
 
+// Get all suppliers
+export const getSuppliers = async (req, res) => {
+  try {
+    const suppliers = await User.find({ role: 'supplier' });
+    res.status(200).json(suppliers);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching suppliers', error });
+  }
+};
 export const deleteUser = async (req, res) => {
   try {
     const userId = req.params.id;

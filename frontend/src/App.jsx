@@ -14,6 +14,7 @@ import OrderManager from './pages/OrderManager';
 import NewOrder from './pages/NewOrderForm';
 import Payment from './pages/Payment'; 
 import CheckoutPage from "./pages/PaymentCheckout"; 
+import SupplierList from './pages/SupplierList';
 
 
 
@@ -30,7 +31,8 @@ function App() {
         <Route path="/users " element={<UserProfile />} />  {/*change it when you add more users  /:userId */}
         <Route path="/manager" element={<ManagerDashboard />} />
         <Route path="/staff" element={<StaffDashboard />} />
-        <Route path="/supplier" element={<SupplierProfile />} /> {/*change it when you add more users  */}
+        <Route path="/suppliers" element={<SupplierList />} />
+        <Route path="" element={<SupplierProfile />} /> {/*change it when you add more users  */}
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/orders" element={<OrderManager/>} />
         <Route path="/orders/new" element={<NewOrder />} /> 
