@@ -32,7 +32,7 @@ function App() {
         <Route path="/manager" element={<ManagerDashboard />} />
         <Route path="/staff" element={<StaffDashboard />} />
         <Route path="/suppliers" element={<SupplierList />} />
-        <Route path="" element={<SupplierProfile />} /> {/*change it when you add more users  */}
+        <Route path="/suppliers/:userId" element={<SupplierProfile />} />   
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/orders" element={<OrderManager/>} />
         <Route path="/orders/new" element={<NewOrder />} /> 

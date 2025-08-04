@@ -1,18 +1,20 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
+import Supplier from '../models/supplierModel.js';
+
 
 // Register a new user
 export const register = async (req, res) => { 
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, phoneNumber, address } = req.body;
 
-    // Check if the user making the request is an admin
+    // Check if admin is making the request
     if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admins can register users with specific roles' });
+      return res.status(403).json({ message: 'Only admins can register users' });
     }
 
-    // Check if user already exists
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
@@ -22,7 +24,27 @@ export const register = async (req, res) => {
     const user = new User({ username, email, password, role });
     await user.save();
 
-    res.status(201).json({ message: 'User registered successfully', user });
+    // If role is supplier, create supplier profile
+    if (role === 'supplier') {
+      const supplier = new Supplier({
+        user: user._id,
+        phoneNumber: phoneNumber || '',
+        address: address || '',
+        itemsSupplied: [],
+        orderHistory: []
+      });
+      await supplier.save();
+    }
+
+    res.status(201).json({ 
+      message: 'User registered successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error registering user', error });
   }
@@ -115,5 +137,103 @@ export const deleteUser = async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export const createSupplierProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { phoneNumber, address } = req.body;
+
+    // Check if user exists and is a supplier
+    const user = await User.findById(userId);
+    if (!user || user.role !== 'supplier') {
+      return res.status(404).json({ message: 'Supplier user not found' });
+    }
+
+    // Create supplier profile
+    const supplier = new Supplier({
+      user: userId,
+      phoneNumber,
+      address,
+      itemsSupplied: [],
+      orderHistory: []
+    });
+
+    await supplier.save();
+    res.status(201).json(supplier);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating supplier profile', error });
+  }
+};
+export const registerSupplier = async (req, res) => {
+  try {
+    const { username, email, password, phoneNumber, address } = req.body;
+
+    // Check if admin is making the request
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can register suppliers' });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    // 1. Create User record
+    const user = new User({
+      username,
+      email,
+      password,
+      role: 'supplier' // Force role to supplier
+    });
+    await user.save();
+
+    // 2. Automatically create Supplier profile
+    const supplier = new Supplier({
+      user: user._id, // Reference the new user
+      phoneNumber,
+      address,
+      itemsSupplied: [], // Initialize empty arrays
+      orderHistory: []
+    });
+    await supplier.save();
+
+    res.status(201).json({
+      message: 'Supplier registered successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      },
+      supplierProfile: {
+        phoneNumber: supplier.phoneNumber,
+        address: supplier.address
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ 
+      message: 'Error registering supplier',
+      error: error.message 
+    });
+  }
+};
+
+
+
+// Get supplier profile
+export const getSupplierProfile = async (req, res) => {
+  try {
+    const supplier = await Supplier.findOne({ user: req.params.userId })
+                                  .populate('user', 'username email role createdAt');
+    if (!supplier) {
+      return res.status(404).json({ message: 'Supplier profile not found' });
+    }
+    res.status(200).json(supplier);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching supplier profile', error });
   }
 };

@@ -23,25 +23,26 @@ const Register = () => {
     email: '',
     password: '',
     role: 'user', // Default role
+    phoneNumber: '',
+    address: ''
   });
   const navigate = useNavigate(); 
-
   const toast = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token'); // Get the token from storage
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Include the token
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
       const data = await response.json();
-  
+
       if (response.ok) {
         toast({
           title: 'Registration Successful',
@@ -50,6 +51,7 @@ const Register = () => {
           duration: 5000,
           isClosable: true,
         });
+        navigate('/admin');
       } else {
         toast({
           title: 'Registration Failed',
@@ -59,8 +61,6 @@ const Register = () => {
           isClosable: true,
         });
       }
-
-      navigate('/admin'); 
 
     } catch (error) {
       toast({
@@ -73,7 +73,7 @@ const Register = () => {
       console.error('Error:', error);
     }
   };
- 
+
   return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bg="#f3e8ff">
       <Box display="flex" bg="white" boxShadow="xl" borderRadius="lg" overflow="hidden" width={{ base: '90%', md: '60%', lg: '50%' }}>
@@ -81,7 +81,7 @@ const Register = () => {
         <Box flex={1} display={{ base: 'none', md: 'block' }} bg="purple.50" p={8}>
           <img src={registerImage} alt="Register Illustration" style={{ width: '100%', height: 'auto' }} />
         </Box>
-        
+
         {/* Right Side - Form */}
         <Box flex={1} p={8} display="flex" flexDirection="column" justifyContent="center">
           <Text fontSize="2xl" fontWeight="bold" mb={4} color="purple.700">Register</Text>
@@ -143,11 +143,45 @@ const Register = () => {
                 </FormControl>
               )}
 
+              {/* Conditionally show for Supplier */}
+              {formData.role === 'supplier' && (
+                <>
+                  <FormControl id="phoneNumber" isRequired>
+                    <FormLabel color="purple.700">Phone Number</FormLabel>
+                    <Input
+                      type="text"
+                      placeholder="Enter phone number"
+                      value={formData.phoneNumber}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phoneNumber: e.target.value })
+                      }
+                      borderColor="purple.300"
+                      focusBorderColor="purple.500"
+                    />
+                  </FormControl>
+
+                  <FormControl id="address" isRequired>
+                    <FormLabel color="purple.700">Address</FormLabel>
+                    <Input
+                      type="text"
+                      placeholder="Enter address"
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      borderColor="purple.300"
+                      focusBorderColor="purple.500"
+                    />
+                  </FormControl>
+                </>
+              )}
+
               <Button type="submit" colorScheme="purple" width="full" mt={4} borderRadius="md">
                 Register
               </Button>
             </VStack>
           </form>
+
           <Divider my={6} borderColor="purple.300" />
           <Text textAlign="center">
             Already have an account? <Text as="span" color="purple.500" cursor="pointer">Login here</Text>

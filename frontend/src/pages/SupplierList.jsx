@@ -15,6 +15,7 @@ import { FaSun, FaMoon, FaStore } from "react-icons/fa";
 import Sidebar from "../components/sidebar";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 
 const SupplierList = () => {
   const { colorMode, toggleColorMode } = useColorMode();
@@ -79,7 +80,8 @@ const SupplierList = () => {
         <Grid templateColumns="repeat(auto-fill, minmax(300px, 1fr))" gap={6}>
           {suppliers.map((supplier) => (
             <Box
-              key={supplier._id}
+              as={Link}
+              to={`/suppliers/${supplier._id}`}     
               bg={cardBgColor}
               p={6}
               rounded="md"

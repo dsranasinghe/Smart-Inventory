@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, getAllUsers , getUserById , deleteUser, getSuppliers } from '../controllers/userController.js';
+import { register, login, getAllUsers , getUserById , deleteUser, getSuppliers,getSupplierProfile,createSupplierProfile, registerSupplier} from '../controllers/userController.js';
 import { authenticate, isAdmin } from '../middleware/authMddleware.js';
 
 
@@ -19,6 +19,13 @@ router.get('/users/:userId', authenticate, isAdmin, getUserById);
 
 router.delete('/api/users/:id', authenticate, isAdmin, deleteUser);
 
-// Get all suppliers (admin/manager only)
+// Get all suppliers 
 router.get('/suppliers', authenticate, getSuppliers);
+
+router.post('/suppliers/register', authenticate, isAdmin, registerSupplier);
+
+router.post('/suppliers/:userId', authenticate, isAdmin, createSupplierProfile);
+// Get supplier profile
+router.get('/suppliers/:userId/profile', authenticate, getSupplierProfile);
+
 export default router;

@@ -4,253 +4,151 @@ import {
   Text,
   VStack,
   HStack,
-  Button,
-  Divider,
-  useColorModeValue,
   Avatar,
-  IconButton,
-  Badge,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  useColorMode,
-  Spacer, 
+  Badge,
+  Button,
+  useColorModeValue,
+  Spinner // Added Spinner import
 } from "@chakra-ui/react";
-import { FaMoon, FaSun, FaBell } from "react-icons/fa";
-import { FiMenu } from "react-icons/fi";
+import { FaStore } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 
-// Mock Data for Supplier Orders
-const supplierOrders = [
-  {
-    date: "2025/01/19",
-    orders: [
-      { name: "Product A", price: "$40.00" },
-      { name: "Product B", price: "$40.00" },
-    ],
-    subtotal: "$80.00",
-    discount: "$0.00",
-    shipping: "$2.00",
-    total: "$82.00",
-    status: "Delivered",
-  },
-  {
-    date: "2025/02/10",
-    orders: [
-      { name: "Product C", price: "$25.00" },
-      { name: "Product D", price: "$30.00" },
-    ],
-    subtotal: "$55.00",
-    discount: "$5.00",
-    shipping: "$3.00",
-    total: "$53.00",
-    status: "Pending",
-  },
-];
-
-// Mock Data for Upcoming Orders
-const upcomingOrders = [
-  {
-    date: "2025/03/15",
-    products: [
-      { name: "Product E", quantity: 10 },
-      { name: "Product F", quantity: 5 },
-    ],
-    expectedDelivery: "2025/03/20",
-  },
-  {
-    date: "2025/03/20",
-    products: [
-      { name: "Product G", quantity: 8 },
-      { name: "Product H", quantity: 12 },
-    ],
-    expectedDelivery: "2025/03/25",
-  },
-];
-
-// Mock Data for Notifications
-const notifications = [
-  { message: "New order received for 2025/03/15", date: "2025/03/10" },
-  { message: "Payment received for order 2025/01/19", date: "2025/01/25" },
-];
-
-const SupplierDashboard = () => {
-  const bgColor = useColorModeValue("gray.100", "gray.900");
-  const cardBgColor = useColorModeValue("white", "gray.700");
+const SupplierProfile = () => {
+  const { userId } = useParams();
+  const [supplier, setSupplier] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
-  const { colorMode, toggleColorMode } = useColorMode();
+
+useEffect(() => {
+  const fetchSupplier = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`http://localhost:5000/api/suppliers/${userId}/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSupplier(response.data);
+    } catch (error) {
+      console.error("Error fetching supplier:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchSupplier();
+}, [userId]);
+
+  if (loading) return <Flex justify="center"><Spinner size="xl" /></Flex>;
+  if (!supplier) return <Text>Supplier not found</Text>;
 
   return (
-    <Flex bg={bgColor} minH="100vh" p={4}>
-      {/* Sidebar */}
-      <VStack
-        bg={cardBgColor}
-        w={{ base: "full", md: "250px" }}
-        p={4}
-        spacing={6}
-        boxShadow="md"
-        borderRadius="md"
-      >
-        <IconButton
-          icon={<FiMenu />}
-          aria-label="Menu"
-          size="lg"
-          variant="ghost"
-        />
-        <VStack align="start" w="full">
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Orders
-          </Button>
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Profile
-          </Button>
-        </VStack>
-        <Spacer /> {/* Spacer to push content to the bottom */}
-        <VStack align="start" w="full">
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Settings
-          </Button>
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Log out
-          </Button>
-        </VStack>
-      </VStack>
-
-      {/* Main Content */}
-      <VStack flex={1} p={6} spacing={6}>
-        {/* Top Bar */}
-        <Flex w="full" justify="space-between" align="center">
-          <Text fontSize="xl" fontWeight="bold" color={textColor}>
-            Supplier Dashboard
-          </Text>
+    <Box p={6}>
+      <Flex direction="column" gap={6}>
+        {/* Supplier Info */}
+        <Box bg={cardBg} p={6} borderRadius="md" boxShadow="md">
           <HStack spacing={4}>
-            <IconButton
-              icon={<FaBell />}
-              aria-label="Notifications"
-              variant="ghost"
-              color={textColor}
-            />
-            <IconButton
-              icon={colorMode === "dark" ? <FaSun /> : <FaMoon />}
-              onClick={toggleColorMode}
-              aria-label="Toggle Theme"
-              variant="ghost"
-              color={textColor}
-            />
-            <Avatar name="Ann Lee" />
+            <Avatar icon={<FaStore />} name={supplier.user?.username} size="xl" />
+            <VStack align="start" spacing={1}>
+              <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+                {supplier.user?.username || 'N/A'}
+              </Text>
+              <Text>{supplier.user?.email || 'N/A'}</Text>
+              <Text>Phone: {supplier.phoneNumber || 'N/A'}</Text>
+              <Text>Address: {supplier.address || 'N/A'}</Text>
+              <Text>Member since: {supplier.user?.createdAt ? new Date(supplier.user.createdAt).toLocaleDateString() : 'N/A'}</Text>
+            </VStack>
           </HStack>
-        </Flex>
-
-        {/* Notifications */}
-        <Box
-          bg={cardBgColor}
-          p={6}
-          rounded="md"
-          boxShadow="md"
-          w="full"
-        >
-          <Text fontSize="lg" fontWeight="bold" color={textColor} mb={4}>
-            Notifications
-          </Text>
-          {notifications.map((notification, index) => (
-            <Box key={index} mb={4}>
-              <Text color={textColor}>{notification.message}</Text>
-              <Text fontSize="sm" color={useColorModeValue("gray.500", "gray.400")}>
-                {notification.date}
-              </Text>
-            </Box>
-          ))}
         </Box>
 
-        {/* Upcoming Orders */}
-        <Box
-          bg={cardBgColor}
-          p={6}
-          rounded="md"
-          boxShadow="md"
-          w="full"
-        >
-          <Text fontSize="lg" fontWeight="bold" color={textColor} mb={4}>
-            Upcoming Orders
-          </Text>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>Order Date</Th>
-                <Th>Products</Th>
-                <Th>Expected Delivery</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {upcomingOrders.map((order, index) => (
-                <Tr key={index}>
-                  <Td>{order.date}</Td>
-                  <Td>
-                    {order.products.map((product, idx) => (
-                      <Text key={idx}>
-                        {product.name} (x{product.quantity})
-                      </Text>
-                    ))}
-                  </Td>
-                  <Td>{order.expectedDelivery}</Td>
+        {/* Items Supplied */}
+        <Box bg={cardBg} p={6} borderRadius="md" boxShadow="md">
+          <Text fontSize="xl" fontWeight="bold" mb={4}>Items Supplied</Text>
+          {supplier.itemsSupplied?.length > 0 ? (
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  <Th>Item Name</Th>
+                  <Th>Delivery Type</Th>
+                  <Th>Unit Price</Th>
+                  <Th>Status</Th>
+                  <Th>Actions</Th>
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
+              </Thead>
+              <Tbody>
+                {supplier.itemsSupplied.map((item, index) => (
+                  <Tr key={index}>
+                    <Td>{item.name}</Td>
+                    <Td>{item.deliveryType}</Td>
+                    <Td>${item.unitPrice}</Td>
+                    <Td>
+                      <Badge colorScheme={item.inStock ? "green" : "red"}>
+                        {item.inStock ? "In Stock" : "Out of Stock"}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <Button size="sm" colorScheme="blue">Order</Button>
+                      <Button size="sm" ml={2}>View Details</Button>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          ) : (
+            <Text>No items supplied yet</Text>
+          )}
         </Box>
 
-        {/* Past Orders */}
-        {supplierOrders.map((order, index) => (
-          <Box
-            key={index}
-            bg={cardBgColor}
-            p={6}
-            rounded="md"
-            boxShadow="md"
-            w="full"
-          >
-            <Flex justify="space-between" align="center" mb={4}>
-              <Text fontSize="lg" fontWeight="bold" color={textColor}>
-                Order Date: {order.date}
-              </Text>
-              <Badge colorScheme={order.status === "Delivered" ? "green" : "orange"}>
-                {order.status}
-              </Badge>
-            </Flex>
-            {order.orders.map((item, idx) => (
-              <HStack key={idx} justify="space-between" w="full" mb={2}>
-                <Text color={textColor}>{item.name}</Text>
-                <Text color={textColor}>{item.price}</Text>
-              </HStack>
-            ))}
-            <Divider my={4} />
-            <HStack justify="space-between">
-              <Text color={textColor}>Subtotal</Text>
-              <Text>{order.subtotal}</Text>
-            </HStack>
-            <HStack justify="space-between">
-              <Text color={textColor}>Discount</Text>
-              <Text>{order.discount}</Text>
-            </HStack>
-            <HStack justify="space-between">
-              <Text color={textColor}>Shipping</Text>
-              <Text>{order.shipping}</Text>
-            </HStack>
-            <Divider my={4} />
-            <HStack justify="space-between" fontWeight="bold">
-              <Text color={textColor}>Total</Text>
-              <Text>{order.total}</Text>
-            </HStack>
-            <Button mt={4} colorScheme="blackAlpha" w="full">
-              View Details
-            </Button>
-          </Box>
-        ))}
-      </VStack>
-    </Flex>
+        {/* Order History */}
+        <Box bg={cardBg} p={6} borderRadius="md" boxShadow="md">
+          <Text fontSize="xl" fontWeight="bold" mb={4}>Order History</Text>
+          {supplier.orderHistory?.length > 0 ? (
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  <Th>Order Date</Th>
+                  <Th>Delivery Type</Th>
+                  <Th>Tracking ID</Th>
+                  <Th>Total</Th>
+                  <Th>Payment Status</Th>
+                  <Th>Delivery Status</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {supplier.orderHistory.map((order, index) => (
+                  <Tr key={index}>
+                    <Td>{new Date(order.orderDate).toLocaleString()}</Td>
+                    <Td>{order.deliveryType}</Td>
+                    <Td>{order.trackingId}</Td>
+                    <Td>${order.orderTotal}</Td>
+                    <Td>
+                      <Badge colorScheme={order.paymentStatus === "Completed" ? "green" : "orange"}>
+                        {order.paymentStatus}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <Badge colorScheme={order.deliveryStatus === "Shipped" ? "green" : "blue"}>
+                        {order.deliveryStatus}
+                      </Badge>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          ) : (
+            <Text>No order history yet</Text>
+          )}
+        </Box>
+      </Flex>
+    </Box>
   );
 };
 
-export default SupplierDashboard;
+export default SupplierProfile;
