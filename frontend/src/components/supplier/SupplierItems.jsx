@@ -1,12 +1,13 @@
 import { useState } from "react";
+import axios from "axios";
 import {
-  Box, Flex, Text, Table, Thead, Tbody, Tr, Th, Td,
-  Badge, Button, useColorModeValue, useDisclosure,
+  Box, Flex, Text, Badge, Button, useColorModeValue, useDisclosure,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton,
   ModalBody, FormControl, FormLabel, Input, ModalFooter, Select,
-  Alert, AlertIcon, AlertTitle, AlertDescription
+  Alert, AlertIcon, AlertTitle, AlertDescription, VStack, HStack, 
+  SimpleGrid, Icon, Center
 } from "@chakra-ui/react";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaTrash, FaBoxOpen, FaPlus } from "react-icons/fa";
 
 const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDeleted }) => {
   const [newItem, setNewItem] = useState({
@@ -19,11 +20,16 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
   const [editingItem, setEditingItem] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
 
-  const cardBg = useColorModeValue("white", "gray.700");
+  // Color mode values
+  const cardBg = useColorModeValue("white", "gray.800");
+  const emptyStateBg = useColorModeValue("gray.50", "gray.700");
+  const textColor = useColorModeValue("gray.800", "gray.100");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+  const hoverBorderColor = useColorModeValue("blue.200", "blue.300");
 
   const handleAddItem = async () => {
     try {
@@ -95,188 +101,345 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
   };
 
   return (
-    <Box bg={cardBg} p={6} borderRadius="md" boxShadow="md">
+    <Box
+      bg={cardBg}
+      p={8}
+      borderRadius="xl"
+      boxShadow="lg"
+      width="100%"
+      maxWidth="1400px"
+      mx="auto"
+    >
       {/* Success/Error Alerts */}
       {success && (
-        <Alert status="success" mb={4}>
-          <AlertIcon />
-          <AlertTitle mr={2}>Success!</AlertTitle>
-          <AlertDescription>{success}</AlertDescription>
+        <Alert 
+          status="success" 
+          mb={6} 
+          borderRadius="lg" 
+          variant="left-accent"
+          alignItems="flex-start"
+        >
+          <AlertIcon mt={1} />
+          <Box>
+            <AlertTitle>Success!</AlertTitle>
+            <AlertDescription>{success}</AlertDescription>
+          </Box>
         </Alert>
       )}
       {error && (
-        <Alert status="error" mb={4}>
-          <AlertIcon />
-          <AlertTitle mr={2}>Error!</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+        <Alert 
+          status="error" 
+          mb={6} 
+          borderRadius="lg" 
+          variant="left-accent"
+          alignItems="flex-start"
+        >
+          <AlertIcon mt={1} />
+          <Box>
+            <AlertTitle>Error!</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Box>
         </Alert>
       )}
 
-      <Flex justify="space-between" align="center" mb={4}>
-        <Text fontSize="xl" fontWeight="bold">Items Supplied</Text>
-        <Button colorScheme="blue" onClick={onOpen}>
+      {/* Header with Add Button */}
+      <Flex justify="space-between" align="center" mb={8}>
+        <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+          Items Supplied
+        </Text>
+        <Button
+          leftIcon={<FaPlus />}
+          colorScheme="blue"
+          onClick={onOpen}
+          size="md"
+          borderRadius="md"
+          boxShadow="sm"
+          _hover={{ 
+            transform: "translateY(-2px)",
+            boxShadow: "md"
+          }}
+          transition="all 0.2s"
+        >
           Add New Item
         </Button>
       </Flex>
-      
+
+      {/* Items Grid */}
       {items?.length > 0 ? (
-        <Table variant="simple">
-          <Thead>
-            <Tr>
-              <Th>Item Name</Th>
-              <Th>Description</Th>
-              <Th>Price</Th>
-              <Th>Delivery</Th>
-              <Th>Status</Th>
-              <Th>Actions</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {items.map((item) => (
-              <Tr key={item._id}>
-                <Td>{item.name}</Td>
-                <Td>{item.description}</Td>
-                <Td>${item.unitPrice}</Td>
-                <Td>{item.deliveryType}</Td>
-                <Td>
-                  <Badge colorScheme={item.inStock ? "green" : "red"}>
-                    {item.inStock ? "In Stock" : "Out of Stock"}
-                  </Badge>
-                </Td>
-                <Td>
-                  <Button 
-                    size="sm" 
-                    colorScheme="blue" 
-                    mr={2}
+        <SimpleGrid 
+          columns={{ base: 1, md: 2, lg: 3 }} 
+          spacing={6}
+          width="100%"
+        >
+          {items.map((item) => (
+            <Box
+              key={item._id}
+              bg={cardBg}
+              p={6}
+              borderRadius="xl"
+              boxShadow="md"
+              border="1px solid"
+              borderColor={borderColor}
+              transition="all 0.2s"
+              _hover={{ 
+                transform: "translateY(-5px)",
+                boxShadow: "xl",
+                borderColor: hoverBorderColor
+              }}
+              height="100%"
+            >
+              <VStack align="start" spacing={4} height="100%">
+                <Text fontSize="xl" fontWeight="bold" color={textColor}>
+                  {item.name}
+                </Text>
+                
+                {item.description && (
+                  <Text 
+                    color={useColorModeValue("gray.600", "gray.300")}
+                    fontSize="sm"
+                  >
+                    {item.description}
+                  </Text>
+                )}
+                
+                <HStack spacing={4} mt={2}>
+                  <Text fontWeight="semibold">${item.unitPrice}</Text>
+                  <Text fontSize="sm" color={useColorModeValue("gray.500", "gray.400")}>
+                    {item.deliveryType} delivery
+                  </Text>
+                </HStack>
+                
+                <Badge
+                  colorScheme={item.inStock ? "green" : "red"}
+                  fontSize="sm"
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                  alignSelf="flex-start"
+                  mt={2}
+                >
+                  {item.inStock ? "In Stock" : "Out of Stock"}
+                </Badge>
+                
+                <HStack spacing={3} pt={4} mt="auto">
+                  <Button
+                    size="sm"
+                    colorScheme="blue"
+                    variant="outline"
                     leftIcon={<FaEdit />}
                     onClick={() => openEditModal(item)}
                   >
                     Edit
                   </Button>
-                  <Button 
-                    size="sm" 
-                    colorScheme="red" 
+                  <Button
+                    size="sm"
+                    colorScheme="red"
+                    variant="outline"
                     leftIcon={<FaTrash />}
                     onClick={() => handleDeleteItem(item._id)}
                   >
                     Delete
                   </Button>
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+                </HStack>
+              </VStack>
+            </Box>
+          ))}
+        </SimpleGrid>
       ) : (
-        <Text>No items supplied yet</Text>
+        <Center
+          bg={emptyStateBg}
+          p={12}
+          borderRadius="xl"
+          flexDirection="column"
+          textAlign="center"
+          border="2px dashed"
+          borderColor={useColorModeValue("gray.300", "gray.500")}
+          minH="300px"
+          width="100%"
+        >
+          <Icon 
+            as={FaBoxOpen} 
+            boxSize={10} 
+            mb={4} 
+            color={useColorModeValue("gray.400", "gray.500")} 
+          />
+          <Text fontSize="xl" fontWeight="medium" color="gray.500" mb={2}>
+            No items supplied yet
+          </Text>
+          <Text 
+            color={useColorModeValue("gray.500", "gray.400")} 
+            mb={4}
+            maxWidth="400px"
+          >
+            Get started by adding your first product to inventory
+          </Text>
+          <Button
+            colorScheme="blue"
+            leftIcon={<FaPlus />}
+            onClick={onOpen}
+            size="md"
+            mt={2}
+          >
+            Add First Item
+          </Button>
+        </Center>
       )}
 
       {/* Add Item Modal */}
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Add New Item</ModalHeader>
+        <ModalContent borderRadius="xl">
+          <ModalHeader 
+            borderBottom="1px solid" 
+            borderColor={borderColor}
+            fontSize="xl"
+          >
+            Add New Item
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody pb={6}>
-            <FormControl isRequired>
-              <FormLabel>Item Name</FormLabel>
-              <Input 
-                value={newItem.name}
-                onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                placeholder="Enter item name"
-              />
-            </FormControl>
+          <ModalBody py={6}>
+            <VStack spacing={5}>
+              <FormControl isRequired>
+                <FormLabel>Item Name</FormLabel>
+                <Input
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                  placeholder="Enter item name"
+                  size="lg"
+                  focusBorderColor="blue.500"
+                />
+              </FormControl>
 
-            <FormControl mt={4}>
-              <FormLabel>Description</FormLabel>
-              <Input 
-                value={newItem.description}
-                onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                placeholder="Enter description"
-              />
-            </FormControl>
+              <FormControl>
+                <FormLabel>Description</FormLabel>
+                <Input
+                  value={newItem.description}
+                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                  placeholder="Enter description (optional)"
+                  size="lg"
+                  focusBorderColor="blue.500"
+                />
+              </FormControl>
 
-            <FormControl isRequired mt={4}>
-              <FormLabel>Unit Price ($)</FormLabel>
-              <Input 
-                type="number"
-                value={newItem.unitPrice}
-                onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
-                placeholder="Enter price"
-              />
-            </FormControl>
+              <FormControl isRequired>
+                <FormLabel>Unit Price ($)</FormLabel>
+                <Input
+                  type="number"
+                  value={newItem.unitPrice}
+                  onChange={(e) => setNewItem({ ...newItem, unitPrice: e.target.value })}
+                  placeholder="0.00"
+                  size="lg"
+                  focusBorderColor="blue.500"
+                />
+              </FormControl>
 
-            <FormControl mt={4}>
-              <FormLabel>Delivery Type</FormLabel>
-              <Select
-                value={newItem.deliveryType}
-                onChange={(e) => setNewItem({...newItem, deliveryType: e.target.value})}
-              >
-                <option value="Standard">Standard</option>
-                <option value="Express">Express</option>
-                <option value="Overnight">Overnight</option>
-              </Select>
-            </FormControl>
+              <FormControl>
+                <FormLabel>Delivery Type</FormLabel>
+                <Select
+                  value={newItem.deliveryType}
+                  onChange={(e) => setNewItem({ ...newItem, deliveryType: e.target.value })}
+                  size="lg"
+                  focusBorderColor="blue.500"
+                >
+                  <option value="Standard">Standard</option>
+                  <option value="Express">Express</option>
+                  <option value="Overnight">Overnight</option>
+                </Select>
+              </FormControl>
 
-            <FormControl mt={4}>
-              <FormLabel>Stock Status</FormLabel>
-              <Select
-                value={newItem.inStock}
-                onChange={(e) => setNewItem({...newItem, inStock: e.target.value === "true"})}
-              >
-                <option value={true}>In Stock</option>
-                <option value={false}>Out of Stock</option>
-              </Select>
-            </FormControl>
+              <FormControl>
+                <FormLabel>Stock Status</FormLabel>
+                <Select
+                  value={newItem.inStock}
+                  onChange={(e) => setNewItem({ ...newItem, inStock: e.target.value === "true" })}
+                  size="lg"
+                  focusBorderColor="blue.500"
+                >
+                  <option value={true}>In Stock</option>
+                  <option value={false}>Out of Stock</option>
+                </Select>
+              </FormControl>
+            </VStack>
           </ModalBody>
 
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={handleAddItem}>
-              Save
+          <ModalFooter 
+            borderTop="1px solid" 
+            borderColor={borderColor}
+            pt={4}
+          >
+            <Button 
+              colorScheme="blue" 
+              mr={3} 
+              onClick={handleAddItem}
+              size="lg"
+              px={6}
+            >
+              Save Item
             </Button>
-            <Button onClick={onClose}>Cancel</Button>
+            <Button 
+              onClick={onClose}
+              variant="ghost"
+              size="lg"
+            >
+              Cancel
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       {/* Edit Item Modal */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose}>
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Edit Item</ModalHeader>
+        <ModalContent borderRadius="xl">
+          <ModalHeader 
+            borderBottom="1px solid" 
+            borderColor={borderColor}
+            fontSize="xl"
+          >
+            Edit Item
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody pb={6}>
+          <ModalBody py={6}>
             {editingItem && (
-              <>
+              <VStack spacing={5}>
                 <FormControl isRequired>
                   <FormLabel>Item Name</FormLabel>
-                  <Input 
+                  <Input
                     value={editingItem.name}
-                    onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                    onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                    size="lg"
+                    focusBorderColor="blue.500"
                   />
                 </FormControl>
 
-                <FormControl mt={4}>
+                <FormControl>
                   <FormLabel>Description</FormLabel>
-                  <Input 
+                  <Input
                     value={editingItem.description}
-                    onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
+                    onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+                    size="lg"
+                    focusBorderColor="blue.500"
                   />
                 </FormControl>
 
-                <FormControl isRequired mt={4}>
+                <FormControl isRequired>
                   <FormLabel>Unit Price ($)</FormLabel>
-                  <Input 
+                  <Input
                     type="number"
                     value={editingItem.unitPrice}
-                    onChange={(e) => setEditingItem({...editingItem, unitPrice: e.target.value})}
+                    onChange={(e) => setEditingItem({ ...editingItem, unitPrice: e.target.value })}
+                    size="lg"
+                    focusBorderColor="blue.500"
                   />
                 </FormControl>
 
-                <FormControl mt={4}>
+                <FormControl>
                   <FormLabel>Delivery Type</FormLabel>
                   <Select
                     value={editingItem.deliveryType}
-                    onChange={(e) => setEditingItem({...editingItem, deliveryType: e.target.value})}
+                    onChange={(e) => setEditingItem({ ...editingItem, deliveryType: e.target.value })}
+                    size="lg"
+                    focusBorderColor="blue.500"
                   >
                     <option value="Standard">Standard</option>
                     <option value="Express">Express</option>
@@ -284,25 +447,43 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
                   </Select>
                 </FormControl>
 
-                <FormControl mt={4}>
+                <FormControl>
                   <FormLabel>Stock Status</FormLabel>
                   <Select
                     value={editingItem.inStock}
-                    onChange={(e) => setEditingItem({...editingItem, inStock: e.target.value === "true"})}
+                    onChange={(e) => setEditingItem({ ...editingItem, inStock: e.target.value === "true" })}
+                    size="lg"
+                    focusBorderColor="blue.500"
                   >
                     <option value={true}>In Stock</option>
                     <option value={false}>Out of Stock</option>
                   </Select>
                 </FormControl>
-              </>
+              </VStack>
             )}
           </ModalBody>
 
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={handleEditItem}>
+          <ModalFooter 
+            borderTop="1px solid" 
+            borderColor={borderColor}
+            pt={4}
+          >
+            <Button 
+              colorScheme="blue" 
+              mr={3} 
+              onClick={handleEditItem}
+              size="lg"
+              px={6}
+            >
               Save Changes
             </Button>
-            <Button onClick={onEditClose}>Cancel</Button>
+            <Button 
+              onClick={onEditClose}
+              variant="ghost"
+              size="lg"
+            >
+              Cancel
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

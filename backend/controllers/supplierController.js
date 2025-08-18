@@ -5,45 +5,40 @@ import { Types } from 'mongoose';
 
 // Add new item to supplier's inventory
 export const addItem = async (req, res) => {
+    console.log('Add Item Request Received:', {
+    params: req.params,
+    body: req.body,
+    user: req.user
+  });
   try {
     const { userId } = req.params;
     const { name, description, unitPrice, deliveryType, inStock } = req.body;
 
-    // 1. Find the supplier by user ID
+    // Find supplier by userId
     const supplier = await Supplier.findOne({ user: userId });
     if (!supplier) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Supplier not found' 
-      });
+      return res.status(404).json({ message: 'Supplier not found' });
     }
 
-    // 2. Create the new item
+    // Create new item
     const newItem = await Item.create({
       name,
       description,
       unitPrice,
       deliveryType,
       inStock,
-      supplier: supplier._id // Link to supplier
+      supplier: supplier._id
     });
 
-    // 3. Return success response
-    res.status(201).json({
-      success: true,
-      message: 'Item added successfully',
-      data: newItem
-    });
+    // ✅ return only the item, not a wrapper
+    res.status(201).json(newItem);
 
   } catch (error) {
     console.error('Error adding item:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to add item',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Failed to add item', error: error.message });
   }
 };
+
 
 // Update existing item
 export const updateItem = async (req, res) => {
