@@ -63,8 +63,9 @@ const Login = () => {
           navigate('/staff');
           break;
         case 'supplier':
-          navigate('/supplier/:supplierId');
-          break;
+  navigate(`/supplier/${data.user.id}`); 
+  break;
+
         default:
           navigate('/');
       }

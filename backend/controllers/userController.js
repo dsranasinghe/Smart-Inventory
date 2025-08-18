@@ -228,12 +228,32 @@ export const registerSupplier = async (req, res) => {
 export const getSupplierProfile = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ user: req.params.userId })
-                                  .populate('user', 'username email role createdAt');
+      .populate('user')
+      .populate('itemsSupplied')
+      .populate('orderHistory');
+    
     if (!supplier) {
-      return res.status(404).json({ message: 'Supplier profile not found' });
+      return res.status(404).json({ message: 'Supplier not found' });
     }
-    res.status(200).json(supplier);
+    
+    res.json(supplier);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching supplier profile', error });
+    res.status(500).json({ message: error.message });
+  }
+};
+export const getSupplierByUserId = async (req, res) => {
+  try {
+    const supplier = await Supplier.findOne({ user: req.params.userId })
+      .populate('itemsSupplied')
+      .populate('orderHistory');
+    
+    if (!supplier) {
+      return res.status(404).json({ message: 'Supplier not found' });
+    }
+    
+    res.json(supplier);
+  } catch (error) {
+    console.error('Error fetching supplier:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
