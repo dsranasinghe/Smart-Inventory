@@ -17,9 +17,12 @@ import {
   Badge,
   Button,
   useColorModeValue,
-  Spinner
+  Spinner,
+  Grid, 
+  GridItem
 } from "@chakra-ui/react";
 import { FaStore } from "react-icons/fa";
+import SupplierSidebar from "../components/SupplierSidebar";
 
 const SupplierProfile = () => {
   const { userId } = useParams();
@@ -28,6 +31,8 @@ const SupplierProfile = () => {
   const [error, setError] = useState(null);
   const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
+  const [activeTab, setActiveTab] = useState("Dashboard");
+
 
   useEffect(() => {
     const fetchSupplier = async () => {
@@ -81,7 +86,14 @@ const SupplierProfile = () => {
   }
 
   return (
-    <Box p={6}>
+  <Grid templateColumns="250px 1fr" minH="100vh">
+    {/* Sidebar Column */}
+    <GridItem>
+      <SupplierSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    </GridItem>
+    
+    {/* Main Content Column */}
+    <GridItem ml="250px" p={6}>
       <Flex direction="column" gap={6}>
         {/* Supplier Info */}
         <Box bg={cardBg} p={6} borderRadius="md" boxShadow="md">
@@ -183,8 +195,9 @@ const SupplierProfile = () => {
           )}
         </Box>
       </Flex>
-    </Box>
-  );
+    </GridItem>
+  </Grid>
+);
 };
 
 export default SupplierProfile;
