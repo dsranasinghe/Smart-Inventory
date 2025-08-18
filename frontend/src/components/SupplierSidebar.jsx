@@ -1,10 +1,5 @@
 import { Box, Flex, Text, VStack, Button, useColorModeValue } from "@chakra-ui/react";
-import { 
-  FaTachometerAlt, 
-  FaBoxes, 
-  FaClipboardList,
-  FaStore
-} from "react-icons/fa";
+import { FaTachometerAlt, FaBoxes, FaClipboardList, FaStore } from "react-icons/fa";
 
 const SupplierSidebar = ({ activeTab, setActiveTab }) => {
   const sidebarBg = useColorModeValue("gray.50", "gray.800");
@@ -25,6 +20,8 @@ const SupplierSidebar = ({ activeTab, setActiveTab }) => {
       p={4} 
       position="fixed" 
       boxShadow="md"
+      borderRight="1px solid"
+      borderColor={useColorModeValue("gray.200", "gray.700")}
     >
       <Flex align="center" mb={8} p={2}>
         <FaStore size="24px" />

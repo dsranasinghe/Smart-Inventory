@@ -230,7 +230,13 @@ export const getSupplierProfile = async (req, res) => {
     const supplier = await Supplier.findOne({ user: req.params.userId })
       .populate('user')
       .populate('itemsSupplied')
-      .populate('orderHistory');
+      .populate({
+        path: 'orderHistory',
+        populate: {
+          path: 'items.item',
+          model: 'Item'
+        }
+      });
     
     if (!supplier) {
       return res.status(404).json({ message: 'Supplier not found' });
@@ -241,11 +247,19 @@ export const getSupplierProfile = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 export const getSupplierByUserId = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ user: req.params.userId })
+      .populate('user') 
       .populate('itemsSupplied')
-      .populate('orderHistory');
+      .populate({
+        path: 'orderHistory',
+        populate: {
+          path: 'items.item',
+          model: 'Item'
+        }
+      });
     
     if (!supplier) {
       return res.status(404).json({ message: 'Supplier not found' });

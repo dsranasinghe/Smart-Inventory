@@ -1,7 +1,10 @@
 import express from 'express';
 import { register, login, getAllUsers , getUserById , deleteUser, getSuppliers,getSupplierProfile,createSupplierProfile, registerSupplier, getSupplierByUserId} from '../controllers/userController.js';
 import { authenticate, isAdminOrSelf } from '../middleware/authMddleware.js';
-
+import { 
+  addItem, updateItem, deleteItem, 
+  addOrder, updateOrderStatus 
+} from '../controllers/supplierController.js';
 
 const router = express.Router();
 
@@ -29,4 +32,13 @@ router.post('/suppliers/:userId', authenticate, isAdminOrSelf, createSupplierPro
 router.get('/suppliers/:userId/profile', authenticate, getSupplierProfile);
 router.get('/suppliers/user/:userId', authenticate, getSupplierByUserId);
 
+
+// New supplier item routes
+router.post('/suppliers/:userId/items', authenticate, isAdminOrSelf, addItem);
+router.put('/suppliers/:userId/items/:itemId', authenticate, isAdminOrSelf, updateItem);
+router.delete('/suppliers/:userId/items/:itemId', authenticate, isAdminOrSelf, deleteItem);
+
+// New supplier order routes
+router.post('/suppliers/:userId/orders', authenticate, isAdminOrSelf, addOrder);
+router.put('/suppliers/:userId/orders/:orderId', authenticate, isAdminOrSelf, updateOrderStatus);
 export default router;

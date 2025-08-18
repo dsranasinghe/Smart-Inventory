@@ -15,45 +15,31 @@ const supplierSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  itemsSupplied: [{
-    name: {
-      type: String,
-      required: true
-    },
-    description: String,
-    unitPrice: {
-      type: Number,
-      required: true
-    },
-    deliveryType: {
-      type: String,
-      enum: ['Doorstep', 'Pickup'],
-      default: 'Doorstep'
-    },
-    inStock: {
-      type: Boolean,
-      default: true
-    }
-  }],
-  orderHistory: [{
-    orderDate: {
-      type: Date,
-      default: Date.now
-    },
-    deliveryType: String,
-    trackingId: String,
-    orderTotal: Number,
-    paymentStatus: {
-      type: String,
-      enum: ['Pending', 'Completed', 'Failed'],
-      default: 'Pending'
-    },
-    deliveryStatus: {
-      type: String,
-      enum: ['Processing', 'Shipped', 'Delivered'],
-      default: 'Processing'
-    }
-  }]
-}, { timestamps: true });
+  businessRegistration: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual populate for items
+supplierSchema.virtual('itemsSupplied', {
+  ref: 'Item',
+  localField: '_id',
+  foreignField: 'supplier'
+});
+
+// Virtual populate for orders
+supplierSchema.virtual('orderHistory', {
+  ref: 'Order',
+  localField: '_id',
+  foreignField: 'supplier'
+});
 
 export default mongoose.model('Supplier', supplierSchema);
