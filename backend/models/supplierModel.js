@@ -15,10 +15,7 @@ const supplierSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  businessRegistration: {
-    type: String,
-    required: true
-  },
+  
   createdAt: {
     type: Date,
     default: Date.now
