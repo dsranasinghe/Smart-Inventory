@@ -3,8 +3,11 @@ import { register, login, getAllUsers , getUserById , deleteUser, getSuppliers,g
 import { authenticate, isAdminOrSelf } from '../middleware/authMddleware.js';
 import { 
   addItem, updateItem, deleteItem, 
-  addOrder, updateOrderStatus 
+  getSupplierItems 
 } from '../controllers/supplierController.js';
+import { 
+  createOrder, getManagerOrders, getSupplierOrders, updateOrderStatus 
+} from '../controllers/orderController.js';
 
 const router = express.Router();
 
@@ -34,11 +37,17 @@ router.get('/suppliers/user/:userId', authenticate, getSupplierByUserId);
 
 
 // New supplier item routes
+router.get('/suppliers/:userId/items', authenticate, getSupplierItems);
+
 router.post('/suppliers/:userId/items', authenticate, isAdminOrSelf, addItem);
 router.put('/suppliers/:userId/items/:itemId', authenticate, isAdminOrSelf, updateItem);
 router.delete('/suppliers/:userId/items/:itemId', authenticate, isAdminOrSelf, deleteItem);
 
-// New supplier order routes
-router.post('/suppliers/:userId/orders', authenticate, isAdminOrSelf, addOrder);
-router.put('/suppliers/:userId/orders/:orderId', authenticate, isAdminOrSelf, updateOrderStatus);
+// Order routes
+router.post('/orders', authenticate, createOrder);
+router.get('/orders', authenticate, getManagerOrders);
+router.get('/orders/supplier/:userId', authenticate, getSupplierOrders);
+router.put('/orders/:orderId/status', authenticate, updateOrderStatus);
+
+
 export default router;

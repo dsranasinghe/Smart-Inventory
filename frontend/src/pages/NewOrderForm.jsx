@@ -12,10 +12,12 @@ import {
   Text,
   Flex,
   SimpleGrid,
+  Spinner,
 } from "@chakra-ui/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar";
+import axios from "axios";
 
 const NewOrderPage = () => {
   const [formData, setFormData] = useState({
@@ -26,22 +28,113 @@ const NewOrderPage = () => {
     description: "",
     expectedDate: "",
   });
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplierItems, setSupplierItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [suppliersLoading, setSuppliersLoading] = useState(true);
+  const [itemsLoading, setItemsLoading] = useState(false);
 
   const orderDate = new Date().toISOString().split("T")[0];
   const navigate = useNavigate();
   const toast = useToast();
 
+
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value,
     }));
   };
+  // Fetch suppliers on component mount
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:5000/api/suppliers", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuppliers(response.data);
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch suppliers",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setSuppliersLoading(false);
+      }
+    };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log({ ...formData, orderDate });
+    fetchSuppliers();
+  }, [toast]);
+
+  // Fetch supplier items when supplier is selected
+  useEffect(() => {
+  const fetchSupplierItems = async () => {
+    if (!formData.supplier) {
+      setSupplierItems([]);
+      return;
+    }
+
+    setItemsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`http://localhost:5000/api/suppliers/${formData.supplier}/items`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSupplierItems(response.data);
+    } catch (error) {
+      console.error("Error fetching supplier items:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch supplier items",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  fetchSupplierItems();
+}, [formData.supplier, toast]);
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    const token = localStorage.getItem("token");
+    const selectedItem = supplierItems.find(item => item._id === formData.productName);
+    
+    if (!selectedItem) {
+      throw new Error("Please select a valid product");
+    }
+
+    const orderData = {
+      items: [{
+        item: formData.productName,
+        quantity: parseInt(formData.quantity),
+        unitPriceAtOrder: selectedItem.price
+      }],
+      description: formData.description,
+      expectedDeliveryDate: formData.expectedDate,
+      supplier: formData.supplier
+    };
+
+    console.log("Order data being sent:", orderData);
+    console.log("Supplier ID:", formData.supplier);
+    console.log("Token:", token);
+    await axios.post(`http://localhost:5000/api/orders`, orderData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
     toast({
       title: "Order Submitted",
       description: "The order has been added successfully.",
@@ -50,7 +143,19 @@ const NewOrderPage = () => {
       isClosable: true,
     });
     navigate("/orders");
-  };
+  } catch (error) {
+    console.error("Error submitting order:", error);
+    toast({
+      title: "Error",
+      description: error.response?.data?.message || "Failed to submit order",
+      status: "error",
+      duration: 3000,
+      isClosable: true,
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const cardBg = useColorModeValue("white", "gray.700");
   const bgColor = useColorModeValue("gray.100", "gray.900");
@@ -75,28 +180,55 @@ const NewOrderPage = () => {
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
             <VStack spacing={4} align="stretch">
               <FormControl isRequired>
-                <FormLabel color={labelColor}>Product Name</FormLabel>
-                <Input
-                  name="productName"
-                  value={formData.productName}
-                  onChange={handleChange}
-                  placeholder="Enter product name"
-                />
+                <FormLabel color={labelColor}>Supplier</FormLabel>
+                {suppliersLoading ? (
+                  <Spinner />
+                ) : (
+                  <Select
+                    name="supplier"
+                    value={formData.supplier}
+                    onChange={handleChange}
+                    placeholder="Select supplier"
+                  >
+                    {suppliers.map((supplier) => (
+                      <option key={supplier._id} value={supplier._id}>
+                        {supplier.username}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </FormControl>
+
+              <FormControl isRequired>
+                <FormLabel color={labelColor}>Product</FormLabel>
+                {itemsLoading ? (
+                  <Spinner />
+                ) : (
+                  <Select
+                    name="productName"
+                    value={formData.productName}
+                    onChange={handleChange}
+                    placeholder="Select product"
+                    isDisabled={!formData.supplier}
+                  >
+                    {supplierItems.map((item) => (
+                      <option key={item._id} value={item._id}>
+                        {item.name} - ${item.price}
+                      </option>
+                    ))}
+                  </Select>
+                )}
               </FormControl>
 
               <FormControl isRequired>
                 <FormLabel color={labelColor}>Product Category</FormLabel>
-                <Select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  placeholder="Select category"
-                >
-                  <option value="Groceries">Groceries</option>
-                  <option value="Snacks">Snacks</option>
-                  <option value="Personal Care">Personal Care</option>
-                  <option value="Beverages">Beverages</option>
-                </Select>
+                <Input
+                  value={
+                    supplierItems.find(item => item._id === formData.productName)?.category || ""
+                  }
+                  isReadOnly
+                  placeholder="Category will auto-fill"
+                />
               </FormControl>
 
               <FormControl isRequired>
@@ -107,21 +239,8 @@ const NewOrderPage = () => {
                   value={formData.quantity}
                   onChange={handleChange}
                   placeholder="Enter quantity"
+                  min="1"
                 />
-              </FormControl>
-
-              <FormControl isRequired>
-                <FormLabel color={labelColor}>Supplier</FormLabel>
-                <Select
-                  name="supplier"
-                  value={formData.supplier}
-                  onChange={handleChange}
-                  placeholder="Select supplier"
-                >
-                  <option value="Lanka Traders">Lanka Traders</option>
-                  <option value="Browns & Co.">Browns & Co.</option>
-                  <option value="Unilever Distributors">Unilever Distributors</option>
-                </Select>
               </FormControl>
             </VStack>
 
@@ -149,12 +268,30 @@ const NewOrderPage = () => {
                   name="expectedDate"
                   value={formData.expectedDate}
                   onChange={handleChange}
+                  min={orderDate}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel color={labelColor}>Unit Price</FormLabel>
+                <Input
+                  value={
+                    supplierItems.find(item => item._id === formData.productName)?.price || ""
+                  }
+                  isReadOnly
+                  placeholder="Price will auto-fill"
                 />
               </FormControl>
             </VStack>
           </SimpleGrid>
 
-          <Button type="submit" colorScheme="blue" mt={6}>
+          <Button 
+            type="submit" 
+            colorScheme="blue" 
+            mt={6}
+            isLoading={loading}
+            isDisabled={!formData.supplier || !formData.productName || !formData.quantity || !formData.expectedDate}
+          >
             Submit Order
           </Button>
         </form>

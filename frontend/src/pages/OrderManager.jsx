@@ -21,40 +21,44 @@ import { FaEdit, FaTrashAlt, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar";
 import { useState, useEffect } from "react";
-
-// Mock data (replace with backend later)
-const orders = [
-  {
-    id: "ORD-001",
-    product: "Samaposha 700g",
-    customer: "Liam Wang",
-    date: "2025-06-23",
-    status: "Pending",
-  },
-  {
-    id: "ORD-002",
-    product: "Chocolate Box",
-    customer: "Nimal Perera",
-    date: "2025-06-22",
-    status: "Completed",
-  },
-  {
-    id: "ORD-003",
-    product: "SunSilk Shampoo 100ml",
-    customer: "Anya Lee",
-    date: "2025-06-21",
-    status: "Pending",
-  },
-];
+import axios from "axios";
 
 const OrdersPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [statusFilter, setStatusFilter] = useState("All");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const bgColor = useColorModeValue("white", "gray.900");
   const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
+
+  // Fetch orders on component mount
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:5000/api/orders", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setOrders(response.data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [toast]);
 
   const handleAddOrder = () => {
     navigate("/orders/new");
@@ -63,7 +67,18 @@ const OrdersPage = () => {
   const filteredOrders =
     statusFilter === "All"
       ? orders
-      : orders.filter((order) => order.status === statusFilter);
+      : orders.filter((order) => order.deliveryStatus === statusFilter);
+
+  if (loading) {
+    return (
+      <Flex bg={bgColor} minH="100vh">
+        <Sidebar />
+        <Box p={6} flex={1} display="flex" alignItems="center" justifyContent="center">
+          <Spinner size="xl" />
+        </Box>
+      </Flex>
+    );
+  }
 
   return (
     <Flex bg={bgColor} minH="100vh">
@@ -83,8 +98,10 @@ const OrdersPage = () => {
               w="180px"
             >
               <option value="All">All</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
+              <option value="Processing">Processing</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
             </Select>
             <Button
               leftIcon={<FaPlus />}
@@ -103,27 +120,35 @@ const OrdersPage = () => {
               <Tr>
                 <Th>Order ID</Th>
                 <Th>Product</Th>
-                <Th>Customer</Th>
-                <Th>Date</Th>
+                <Th>Supplier</Th>
+                <Th>Quantity</Th>
+                <Th>Order Date</Th>
                 <Th>Status</Th>
                 <Th textAlign="center">Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
               {filteredOrders.length > 0 ? (
-                filteredOrders.map((order, idx) => (
-                  <Tr key={idx}>
-                    <Td>{order.id}</Td>
-                    <Td>{order.product}</Td>
-                    <Td>{order.customer}</Td>
-                    <Td>{order.date}</Td>
+                filteredOrders.map((order) => (
+                  <Tr key={order._id}>
+                    <Td>{order.orderNumber}</Td>
+                    <Td>{order.items[0]?.item?.name || "N/A"}</Td>
+                    <Td>{order.supplier?.username || "N/A"}</Td>
+                    <Td>{order.items[0]?.quantity || "N/A"}</Td>
+                    <Td>{new Date(order.orderDate).toLocaleDateString()}</Td>
                     <Td>
                       <Badge
                         colorScheme={
-                          order.status === "Completed" ? "green" : "orange"
+                          order.deliveryStatus === "Delivered" 
+                            ? "green" 
+                            : order.deliveryStatus === "Cancelled" 
+                            ? "red" 
+                            : order.deliveryStatus === "Shipped"
+                            ? "blue"
+                            : "orange"
                         }
                       >
-                        {order.status}
+                        {order.deliveryStatus}
                       </Badge>
                     </Td>
                     <Td>
@@ -148,7 +173,7 @@ const OrdersPage = () => {
                 ))
               ) : (
                 <Tr>
-                  <Td colSpan={6} textAlign="center">
+                  <Td colSpan={7} textAlign="center">
                     No orders found.
                   </Td>
                 </Tr>

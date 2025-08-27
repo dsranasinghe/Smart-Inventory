@@ -159,38 +159,21 @@ export const addOrder = async (req, res) => {
   }
 };
 
-// Update order status
-export const updateOrderStatus = async (req, res) => {
+
+
+// Get supplier items  for order page
+export const getSupplierItems = async (req, res) => {
   try {
-    const { userId, orderId } = req.params;
+    const { userId } = req.params;
     
-    const supplier = await Supplier.findOne({ user: userId });
+    // Find supplier by user ID
+    const supplier = await Supplier.findOne({ user: userId }).populate('itemsSupplied');
     if (!supplier) {
       return res.status(404).json({ message: 'Supplier not found' });
     }
 
-    // Update only orders belonging to this supplier
-    const updatedOrder = await Order.findOneAndUpdate(
-      { _id: orderId, supplier: supplier._id },
-      { 
-        deliveryStatus: req.body.deliveryStatus,
-        paymentStatus: req.body.paymentStatus 
-      },
-      { new: true }
-    );
-
-    if (!updatedOrder) {
-      return res.status(404).json({ message: 'Order not found for this supplier' });
-    }
-
-    res.status(200).json({
-      message: 'Order updated successfully',
-      order: updatedOrder
-    });
+    res.json(supplier.itemsSupplied || []);
   } catch (error) {
-    res.status(500).json({ 
-      message: 'Error updating order',
-      error: error.message 
-    });
+    res.status(500).json({ message: error.message });
   }
 };

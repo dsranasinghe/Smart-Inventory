@@ -27,28 +27,25 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  deliveryType: {
+  description: {
     type: String,
-    enum: ['Standard', 'Express', 'Overnight'],
-    default: 'Standard'
+    default: ''
   },
-  paymentStatus: {
-    type: String,
-    enum: ['Pending', 'Completed', 'Failed', 'Refunded'],
-    default: 'Pending'
+  expectedDeliveryDate: {
+    type: Date,
+    required: true
   },
   deliveryStatus: {
     type: String,
     enum: ['Processing', 'Shipped', 'Delivered', 'Cancelled'],
     default: 'Processing'
   },
-  trackingId: String,
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier',
     required: true
   },
-  customer: {
+  manager: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
@@ -63,6 +60,16 @@ const orderSchema = new mongoose.Schema({
 orderSchema.pre('save', function(next) {
   if (!this.orderNumber) {
     this.orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  }
+  next();
+});
+
+// Calculate order total before saving
+orderSchema.pre('save', function(next) {
+  if (this.items && this.items.length > 0) {
+    this.orderTotal = this.items.reduce((total, item) => {
+      return total + (item.unitPriceAtOrder * item.quantity);
+    }, 0);
   }
   next();
 });
