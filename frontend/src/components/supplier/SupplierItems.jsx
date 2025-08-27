@@ -163,8 +163,10 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
       {items?.length > 0 ? (
         <SimpleGrid 
           columns={{ base: 1, md: 2, lg: 3 }} 
-          spacing={6}
+          spacing={10}
           width="100%"
+          mb={4}
+          minChildWidth="250px"
         >
           {items.map((item) => (
             <ItemCard
