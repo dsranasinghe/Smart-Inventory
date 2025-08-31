@@ -28,7 +28,7 @@ console.log('Orders received in component:', orders);
                     Order #{order.orderNumber || `ORD-${order._id.slice(-4)}`}
                   </Text>
                   
-                  <HStack>
+                 <HStack>
   <Avatar 
     size="sm" 
     name={order.manager?.username} 

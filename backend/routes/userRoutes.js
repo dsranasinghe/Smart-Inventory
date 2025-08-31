@@ -6,7 +6,7 @@ import {
   getSupplierItems 
 } from '../controllers/supplierController.js';
 import { 
-  createOrder, getManagerOrders, getSupplierOrders, updateOrderStatus 
+  createOrder, getManagerOrders, getSupplierOrders, updateOrderStatus, testManager
 } from '../controllers/orderController.js';
 
 const router = express.Router();
@@ -49,5 +49,6 @@ router.get('/orders', authenticate, getManagerOrders);
 router.get('/orders/supplier/:userId', authenticate, getSupplierOrders);
 router.put('/orders/:orderId/status', authenticate, updateOrderStatus);
 
+router.get('/test-manager', testManager);
 
 export default router;

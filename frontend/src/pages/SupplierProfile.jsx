@@ -13,33 +13,41 @@ import SupplierOrders from "../components/supplier/SupplierOrders";
 const SupplierProfile = () => {
   const { userId } = useParams();
   const [supplierData, setSupplierData] = useState(null);
+    const [orders, setOrders] = useState([]); 
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
 
-  useEffect(() => {
-    const fetchSupplier = async () => {
+useEffect(() => {
+    const fetchSupplierData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get(
+        
+        // Fetch supplier data
+        const supplierResponse = await axios.get(
           `http://localhost:5000/api/suppliers/user/${userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-        setSupplierData(response.data);
+        setSupplierData(supplierResponse.data);
+
+        // FETCH ORDERS SEPARATELY ← ADD THIS
+        const ordersResponse = await axios.get(
+          `http://localhost:5000/api/orders/supplier/${userId}`, // ← THIS IS THE MISSING API CALL
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setOrders(ordersResponse.data);
+
       } catch (error) {
-        setError(error.response?.data?.message || "Failed to load supplier data");
+        setError(error.response?.data?.message || "Failed to load data");
       } finally {
         setLoading(false);
       }
     };
-    fetchSupplier();
+    fetchSupplierData();
   }, [userId]);
+
 
   const handleItemAdded = (newItem) => {
     setSupplierData((prev) => ({
@@ -189,8 +197,8 @@ const SupplierProfile = () => {
         )}
 
         {/* Orders Tab */}
-        {activeTab === "Orders" && (
-          <SupplierOrders orders={supplierData.orderHistory} />
+       {activeTab === "Orders" && (
+      <SupplierOrders orders={orders} />
         )}
       </Box>
     </Flex>

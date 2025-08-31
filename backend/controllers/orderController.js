@@ -105,27 +105,48 @@ res.json(orders);
 };
 export const getSupplierOrders = async (req, res) => {
   try {
+    console.log('=== GET SUPPLIER ORDERS CALLED ===');
     const { userId } = req.params;
+    console.log('User ID from params:', userId);
     
     const supplier = await Supplier.findOne({ user: userId });
+    console.log('Found supplier:', supplier);
+    
     if (!supplier) {
       return res.status(404).json({ message: 'Supplier not found' });
     }
 
-    // Fetch orders with manager populated directly
+    // Get orders
     const orders = await Order.find({ supplier: supplier._id })
-      .populate('manager', 'username email')   // <-- populate manager username
-      .populate('items.item', 'name unitPrice price')
       .sort({ orderDate: -1 })
       .lean();
 
-    res.json(orders);
+    console.log('Raw orders from DB:', orders);
+    console.log('Manager ID from first order:', orders[0]?.manager);
+
+    // MANUALLY fetch the manager's username
+    if (orders.length > 0 && orders[0].manager) {
+      console.log('Fetching manager username for ID:', orders[0].manager);
+      const manager = await User.findById(orders[0].manager).select('username').lean();
+      console.log('Found manager:', manager);
+      
+      // Add manager username to ALL orders
+      const ordersWithManager = orders.map(order => ({
+        ...order,
+        manager: { username: manager?.username || 'Unknown' }
+      }));
+
+      console.log('Final orders with manager:', ordersWithManager);
+      res.json(ordersWithManager);
+    } else {
+      console.log('No manager ID found in orders');
+      res.json(orders);
+    }
   } catch (error) {
     console.error('Error in getSupplierOrders:', error);
     res.status(500).json({ message: error.message });
   }
 };
-
 // Update order status
 export const updateOrderStatus = async (req, res) => {
   try {
@@ -146,5 +167,25 @@ export const updateOrderStatus = async (req, res) => {
     res.json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+// Add this function to your orderController.js
+export const testManager = async (req, res) => {
+  try {
+    console.log('=== TESTING MANAGER FETCH ===');
+    
+    // Test if we can fetch the manager directly
+    const manager = await User.findById('67b0fb3e09012d065f8e8a15');
+    console.log('Manager found:', manager);
+    console.log('Manager username:', manager?.username);
+    
+    res.json({ 
+      success: true, 
+      manager: manager ? { username: manager.username } : null 
+    });
+  } catch (error) {
+    console.error('Test error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
