@@ -2,6 +2,7 @@ import Order from '../models/orderModel.js';
 import Supplier from '../models/supplierModel.js';
 import User from '../models/User.js';
 import Item from '../models/itemModel.js';
+import mongoose from 'mongoose';
 
 // Create new order
 export const createOrder = async (req, res) => {
@@ -55,7 +56,10 @@ const populatedOrder = await Order.findById(savedOrder._id)
       select: 'username email'
     }
   })
-  .populate('items.item', 'name unitPrice price');
+  .populate('items.item', 'name unitPrice price')
+  .populate('manager', 'username email role'); 
+console.log("Populated manager:", populatedOrder.manager);
+
 
 console.log('Created order with populated data:', {
   orderId: populatedOrder._id,
@@ -99,25 +103,25 @@ res.json(orders);
     res.status(500).json({ message: error.message });
   }
 };
-
-// Get orders for specific supplier
 export const getSupplierOrders = async (req, res) => {
   try {
     const { userId } = req.params;
     
-    // Find supplier by user ID
     const supplier = await Supplier.findOne({ user: userId });
     if (!supplier) {
       return res.status(404).json({ message: 'Supplier not found' });
     }
 
+    // Fetch orders with manager populated directly
     const orders = await Order.find({ supplier: supplier._id })
-      .populate('manager', 'username email')
-      .populate('items.item', 'name category price')
-      .sort({ orderDate: -1 });
+      .populate('manager', 'username email')   // <-- populate manager username
+      .populate('items.item', 'name unitPrice price')
+      .sort({ orderDate: -1 })
+      .lean();
 
     res.json(orders);
   } catch (error) {
+    console.error('Error in getSupplierOrders:', error);
     res.status(500).json({ message: error.message });
   }
 };
