@@ -1,6 +1,7 @@
 import Order from '../models/orderModel.js';
 import Supplier from '../models/supplierModel.js';
 import User from '../models/User.js';
+import Item from '../models/itemModel.js';
 
 // Create new order
 export const createOrder = async (req, res) => {
@@ -8,18 +9,41 @@ export const createOrder = async (req, res) => {
     const { items, description, expectedDeliveryDate, supplier } = req.body;
     const managerId = req.user.id;
 
-    // Verify supplier exists
-    const supplierExists = await Supplier.findById(supplier);
+    console.log('Received order data:', req.body);
+
+    // Verify supplier exists - find by user ID
+    const supplierExists = await Supplier.findOne({ user: supplier });
     if (!supplierExists) {
       return res.status(404).json({ message: 'Supplier not found' });
     }
 
+    // Get current prices for all items and calculate order total
+    const orderItemsWithPrices = await Promise.all(
+      items.map(async (orderItem) => {
+        const item = await Item.findById(orderItem.item);
+        if (!item) {
+          throw new Error(`Item ${orderItem.item} not found`);
+        }
+        return {
+          item: orderItem.item,
+          quantity: orderItem.quantity,
+          unitPriceAtOrder: item.unitPrice // Capture current price
+        };
+      })
+    );
+
+    // Calculate order total
+    const orderTotal = orderItemsWithPrices.reduce((total, item) => {
+      return total + (item.unitPriceAtOrder * item.quantity);
+    }, 0);
+
     const order = new Order({
-      items,
+      items: orderItemsWithPrices,
       description,
       expectedDeliveryDate,
-      supplier,
-      manager: managerId
+      supplier: supplierExists._id,
+      manager: managerId,
+      orderTotal // Include the calculated total
     });
 
     const savedOrder = await order.save();
@@ -27,14 +51,14 @@ export const createOrder = async (req, res) => {
     // Populate the order with supplier and item details
     const populatedOrder = await Order.findById(savedOrder._id)
       .populate('supplier', 'username email')
-      .populate('items.item', 'name category price');
+      .populate('items.item', 'name unitPrice');
 
     res.status(201).json(populatedOrder);
   } catch (error) {
+    console.error('Error creating order:', error);
     res.status(400).json({ message: error.message });
   }
 };
-
 // Get all orders for manager
 export const getManagerOrders = async (req, res) => {
   try {
