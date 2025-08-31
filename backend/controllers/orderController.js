@@ -9,8 +9,6 @@ export const createOrder = async (req, res) => {
     const { items, description, expectedDeliveryDate, supplier } = req.body;
     const managerId = req.user.id;
 
-    console.log('Received order data:', req.body);
-
     // Verify supplier exists - find by user ID
     const supplierExists = await Supplier.findOne({ user: supplier });
     if (!supplierExists) {
@@ -27,7 +25,7 @@ export const createOrder = async (req, res) => {
         return {
           item: orderItem.item,
           quantity: orderItem.quantity,
-          unitPriceAtOrder: item.unitPrice // Capture current price
+          unitPriceAtOrder: item.unitPrice || item.price // Use the correct field name
         };
       })
     );
@@ -43,17 +41,30 @@ export const createOrder = async (req, res) => {
       expectedDeliveryDate,
       supplier: supplierExists._id,
       manager: managerId,
-      orderTotal // Include the calculated total
+      orderTotal
     });
 
     const savedOrder = await order.save();
     
-    // Populate the order with supplier and item details
-    const populatedOrder = await Order.findById(savedOrder._id)
-      .populate('supplier', 'username email')
-      .populate('items.item', 'name unitPrice');
+   // Populate the order with supplier (including user details) and item details
+const populatedOrder = await Order.findById(savedOrder._id)
+  .populate({
+    path: 'supplier',
+    populate: {
+      path: 'user',
+      select: 'username email'
+    }
+  })
+  .populate('items.item', 'name unitPrice price');
 
-    res.status(201).json(populatedOrder);
+console.log('Created order with populated data:', {
+  orderId: populatedOrder._id,
+  supplier: populatedOrder.supplier,
+  hasUser: !!populatedOrder.supplier?.user,
+  username: populatedOrder.supplier?.user?.username
+});
+
+res.status(201).json(populatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(400).json({ message: error.message });
@@ -64,12 +75,26 @@ export const getManagerOrders = async (req, res) => {
   try {
     const managerId = req.user.id;
     
-    const orders = await Order.find({ manager: managerId })
-      .populate('supplier', 'username email')
-      .populate('items.item', 'name category price')
-      .sort({ orderDate: -1 });
+   // In your getManagerOrders function, add:
+const orders = await Order.find({ manager: managerId })
+  .populate({
+    path: 'supplier',
+    populate: {
+      path: 'user',
+      select: 'username email'
+    }
+  })
+  .populate('items.item', 'name category price unitPrice')
+  .sort({ orderDate: -1 });
 
-    res.json(orders);
+console.log('First order sample:', orders[0] ? {
+  orderId: orders[0]._id,
+  supplier: orders[0].supplier,
+  hasUser: !!orders[0].supplier?.user,
+  username: orders[0].supplier?.user?.username
+} : 'No orders');
+
+res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

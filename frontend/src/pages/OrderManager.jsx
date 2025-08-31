@@ -133,8 +133,8 @@ const OrdersPage = () => {
                   <Tr key={order._id}>
                     <Td>{order.orderNumber}</Td>
                     <Td>{order.items[0]?.item?.name || "N/A"}</Td>
-                    <Td>{order.supplier?.username || "N/A"}</Td>
-                    <Td>{order.items[0]?.quantity || "N/A"}</Td>
+                     <Td>{order.supplier?.user?.username || "N/A"}</Td>                    
+                     <Td>{order.items[0]?.quantity || "N/A"}</Td>
                     <Td>{new Date(order.orderDate).toLocaleDateString()}</Td>
                     <Td>
                       <Badge
