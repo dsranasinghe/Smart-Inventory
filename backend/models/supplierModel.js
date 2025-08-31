@@ -15,28 +15,25 @@ const supplierSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  
+  itemsSupplied: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Item',
+    default: []  // ← ACTUAL ARRAY (NOT VIRTUAL)
+  }],
+  orderHistory: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order', 
+    default: []  // ← ACTUAL ARRAY (NOT VIRTUAL)
+  }],
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-}, {
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
 });
 
-// Virtual populate for items
-supplierSchema.virtual('itemsSupplied', {
-  ref: 'Item',
-  localField: '_id',
-  foreignField: 'supplier'
-});
-
-// Virtual populate for orders
-supplierSchema.virtual('orderHistory', {
-  ref: 'Order',
-  localField: '_id',
-  foreignField: 'supplier'
-});
-
+// REMOVE VIRTUAL POPULATE COMPLETELY
 export default mongoose.model('Supplier', supplierSchema);

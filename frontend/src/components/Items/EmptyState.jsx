@@ -1,5 +1,5 @@
 import { Center, Text, Button, Icon } from "@chakra-ui/react";
-import { FaBoxOpen } from "react-icons/fa";
+import { FaBoxOpen, FaPlus } from "react-icons/fa"; // ← ADD FaPlus HERE
 
 const EmptyState = ({ onAddItem }) => {
   return (
@@ -28,7 +28,7 @@ const EmptyState = ({ onAddItem }) => {
       </Text>
       <Button
         colorScheme="blue"
-        leftIcon={<FaPlus />}
+        leftIcon={<FaPlus />} 
         onClick={onAddItem}
         size="md"
         mt={2}

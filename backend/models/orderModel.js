@@ -53,6 +53,11 @@ const orderSchema = new mongoose.Schema({
   orderDate: {
     type: Date,
     default: Date.now
+  },
+  trackingId: {
+    type: String,
+    unique: true,
+    sparse: true // ← ADD THIS to allow multiple null values
   }
 });
 
@@ -70,6 +75,10 @@ orderSchema.pre('save', function(next) {
     this.orderTotal = this.items.reduce((total, item) => {
       return total + (item.unitPriceAtOrder * item.quantity);
     }, 0);
+  }
+  // ADD THIS: Generate trackingId if not provided
+  if (!this.trackingId) {
+    this.trackingId = `TRK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   }
   next();
 });
