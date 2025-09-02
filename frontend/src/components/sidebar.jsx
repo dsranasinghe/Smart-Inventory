@@ -42,9 +42,8 @@ const Sidebar = ({ userRole = "manager" }) => {  // Default to manager if not sp
   const managerItems = [
     { label: "Orders", icon: FaShoppingCart, to: "/orders" },
     { label: "Suppliers", icon: FaUsers, to: "/suppliers" },
-    { label: "Report", icon: FaChartBar, to: "/report" },
     { label: "Payment", icon: FaWallet, to: "/payment" },
-    { label: "Settings", icon: FaCog, to: "/settings" },
+   
   ];
 
   // Combine items based on user role

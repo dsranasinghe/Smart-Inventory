@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -16,8 +16,10 @@ import {
   Divider,
   HStack,
   VStack,
+  Spinner,
 } from "@chakra-ui/react";
 import { FaUpload, FaTrash, FaCalendarAlt } from "react-icons/fa";
+import axios from "axios";
 
 const InventoryForm = () => {
   const [formData, setFormData] = useState({
@@ -31,7 +33,35 @@ const InventoryForm = () => {
     image: null,
   });
 
+  const [suppliers, setSuppliers] = useState([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(true);
   const toast = useToast();
+
+  // Fetch suppliers on component mount
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:5000/api/suppliers", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuppliers(response.data);
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch suppliers",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setSuppliersLoading(false);
+      }
+    };
+
+    fetchSuppliers();
+  }, [toast]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -126,7 +156,22 @@ const InventoryForm = () => {
 
             <FormControl>
               <FormLabel>Supplier</FormLabel>
-              <Input name="supplier" value={formData.supplier} onChange={handleInputChange} />
+              {suppliersLoading ? (
+                <Spinner />
+              ) : (
+                <Select
+                  name="supplier"
+                  value={formData.supplier}
+                  onChange={handleInputChange}
+                  placeholder="Select supplier"
+                >
+                  {suppliers.map((supplier) => (
+                    <option key={supplier._id} value={supplier._id}>
+                      {supplier.username}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </FormControl>
 
             <FormControl>
@@ -207,10 +252,7 @@ const InventoryForm = () => {
 
       {/* Buttons */}
       <Flex mt={8} justifyContent="flex-end" gap={4}>
-        <Button colorScheme="purple" variant="outline" onClick={() => handleSubmit(true)}>
-          Save as Draft
-        </Button>
-        <Button colorScheme="purple" onClick={() => handleSubmit(false)}>
+              <Button colorScheme="purple" onClick={() => handleSubmit(false)}>
           Save & Publish
         </Button>
       </Flex>
