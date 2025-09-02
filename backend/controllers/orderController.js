@@ -58,15 +58,10 @@ const populatedOrder = await Order.findById(savedOrder._id)
   })
   .populate('items.item', 'name unitPrice price')
   .populate('manager', 'username email role'); 
-console.log("Populated manager:", populatedOrder.manager);
 
 
-console.log('Created order with populated data:', {
-  orderId: populatedOrder._id,
-  supplier: populatedOrder.supplier,
-  hasUser: !!populatedOrder.supplier?.user,
-  username: populatedOrder.supplier?.user?.username
-});
+
+
 
 res.status(201).json(populatedOrder);
   } catch (error) {
@@ -91,12 +86,6 @@ const orders = await Order.find({ manager: managerId })
   .populate('items.item', 'name category price unitPrice')
   .sort({ orderDate: -1 });
 
-console.log('First order sample:', orders[0] ? {
-  orderId: orders[0]._id,
-  supplier: orders[0].supplier,
-  hasUser: !!orders[0].supplier?.user,
-  username: orders[0].supplier?.user?.username
-} : 'No orders');
 
 res.json(orders);
   } catch (error) {
@@ -105,12 +94,12 @@ res.json(orders);
 };
 export const getSupplierOrders = async (req, res) => {
   try {
-    console.log('=== GET SUPPLIER ORDERS CALLED ===');
+    
     const { userId } = req.params;
-    console.log('User ID from params:', userId);
+    
     
     const supplier = await Supplier.findOne({ user: userId });
-    console.log('Found supplier:', supplier);
+   
     
     if (!supplier) {
       return res.status(404).json({ message: 'Supplier not found' });
@@ -121,8 +110,6 @@ export const getSupplierOrders = async (req, res) => {
       .sort({ orderDate: -1 })
       .lean();
 
-    console.log('Raw orders from DB:', orders);
-    console.log('Manager ID from first order:', orders[0]?.manager);
 
     // MANUALLY fetch the manager's username
     if (orders.length > 0 && orders[0].manager) {
@@ -136,14 +123,14 @@ export const getSupplierOrders = async (req, res) => {
         manager: { username: manager?.username || 'Unknown' }
       }));
 
-      console.log('Final orders with manager:', ordersWithManager);
+     
       res.json(ordersWithManager);
     } else {
-      console.log('No manager ID found in orders');
+     
       res.json(orders);
     }
   } catch (error) {
-    console.error('Error in getSupplierOrders:', error);
+    
     res.status(500).json({ message: error.message });
   }
 };
@@ -173,12 +160,11 @@ export const updateOrderStatus = async (req, res) => {
 // Add this function to your orderController.js
 export const testManager = async (req, res) => {
   try {
-    console.log('=== TESTING MANAGER FETCH ===');
+   
     
     // Test if we can fetch the manager directly
     const manager = await User.findById('67b0fb3e09012d065f8e8a15');
-    console.log('Manager found:', manager);
-    console.log('Manager username:', manager?.username);
+   
     
     res.json({ 
       success: true, 

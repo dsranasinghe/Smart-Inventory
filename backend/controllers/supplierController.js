@@ -30,11 +30,11 @@ export const addItem = async (req, res) => {
       supplier: supplier._id
     });
 
-    // ✅ ADD THE NEW ITEM TO THE SUPPLIER'S itemsSupplied ARRAY
+    // ADD THE NEW ITEM TO THE SUPPLIER'S itemsSupplied ARRAY
     supplier.itemsSupplied.push(newItem._id);
     await supplier.save();
 
-    // ✅ Populate the item to return complete data
+    // Populate the item to return complete data
     const populatedItem = await Item.findById(newItem._id);
 
     res.status(201).json(populatedItem);
