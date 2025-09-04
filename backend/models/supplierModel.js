@@ -32,7 +32,14 @@ const supplierSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+   payment_status: { 
+    type: String, 
+    enum: ['pending', 'paid', 'partial', 'overdue'], 
+    default: 'pending' 
+  },
+  last_payment_date: Date,
+  balance: { type: Number, default: 0 }
 });
 
 // REMOVE VIRTUAL POPULATE COMPLETELY

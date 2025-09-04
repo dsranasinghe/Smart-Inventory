@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import {
   Box, Flex, Text, Button, useColorModeValue, useDisclosure,
-  SimpleGrid, Center
+  SimpleGrid
 } from "@chakra-ui/react";
 import { FaPlus } from "react-icons/fa";
 
@@ -16,6 +16,7 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
     name: "",
     description: "",
     unitPrice: "",
+    category: "",         // ✅ Added category
     deliveryType: "Standard",
     inStock: true
   });
@@ -92,6 +93,7 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
       name: "",
       description: "",
       unitPrice: "",
+      category: "",       // ✅ Reset category too
       deliveryType: "Standard",
       inStock: true
     });
@@ -119,7 +121,6 @@ const SupplierItems = ({ items, userId, onItemAdded, onItemUpdated, onItemDelete
       width="550px"
       maxWidth="1400px"
       mx="auto"
-      
     >
       {/* Success/Error Alerts */}
       {success && (

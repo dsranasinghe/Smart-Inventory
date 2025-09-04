@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Item from '../models/itemModel.js';
 import mongoose from 'mongoose';
 
+
 // Create new order
 export const createOrder = async (req, res) => {
   try {
@@ -173,5 +174,23 @@ export const testManager = async (req, res) => {
   } catch (error) {
     console.error('Test error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { paymentStatus } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { paymentStatus },
+      { new: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

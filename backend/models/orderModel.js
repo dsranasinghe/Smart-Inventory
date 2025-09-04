@@ -40,6 +40,12 @@ const orderSchema = new mongoose.Schema({
     enum: ['Processing', 'Shipped', 'Delivered', 'Cancelled'],
     default: 'Processing'
   },
+    paymentStatus: {
+    type: String,
+    enum: ['Pending', 'Paid', 'Failed'],
+    default: 'Pending'
+  },
+ 
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier',
@@ -57,7 +63,7 @@ const orderSchema = new mongoose.Schema({
   trackingId: {
     type: String,
     unique: true,
-    sparse: true // ← ADD THIS to allow multiple null values
+    sparse: true 
   }
 });
 

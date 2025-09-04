@@ -49,24 +49,28 @@ const PaymentPage = () => {
   const textColor = useColorModeValue("gray.800", "white");
   const notificationBg = useColorModeValue("gray.50", "gray.800");
 
-  // ✅ Fetch manager's orders
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/orders/manager", {
+  
+useEffect(() => {
+  const fetchOrders = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(
+        "http://localhost:5000/api/orders/manager",
+        {
           headers: { Authorization: `Bearer ${token}` },
-        });
-        setOrders(res.data);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrders();
-  }, []);
-
+        }
+      );
+      // Filter only pending payments
+      const pendingOrders = res.data.filter(order => order.paymentStatus === 'Pending');
+      setOrders(pendingOrders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchOrders();
+}, []);
   // ✅ Simple polling for new orders
   useEffect(() => {
     const checkForNewOrders = async () => {
@@ -82,25 +86,28 @@ const PaymentPage = () => {
         if (res.data.hasNewOrders) {
           // Show alert and update notifications
           setShowNewOrderAlert(true);
-          
+
           // Add to notifications
           const newNotification = {
             _id: Date.now().toString(),
             message: "New order received",
             timestamp: new Date(),
             read: false,
-            type: "new_order"
+            type: "new_order",
           };
-          
-          setNotifications(prev => [newNotification, ...prev]);
-          setUnreadCount(prev => prev + 1);
-          
+
+          setNotifications((prev) => [newNotification, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+
           // Refresh orders list
-          const ordersRes = await axios.get("http://localhost:5000/api/orders/manager", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const ordersRes = await axios.get(
+            "http://localhost:5000/api/orders/manager",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
           setOrders(ordersRes.data);
-          
+
           // Update last checked time
           setLastChecked(new Date());
         }
@@ -122,17 +129,15 @@ const PaymentPage = () => {
 
   // ✅ Mark notification as read
   const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n._id === notificationId ? { ...n, read: true } : n
-      )
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
     );
-    setUnreadCount(prev => prev - 1);
+    setUnreadCount((prev) => prev - 1);
   };
 
   // ✅ Mark all notifications as read
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
   };
 
@@ -145,10 +150,9 @@ const PaymentPage = () => {
     }).format(amount || 0);
   };
 
-  // ✅ Handle payment click
-  const handlePayment = (orderId) => {
-    navigate(`/payment/checkout/${orderId}`);
-  };
+ const handlePayment = (orderId) => {
+  navigate(`/payment/checkout/${orderId}`); 
+};
 
   // ✅ Format date
   const formatDate = (dateString) => {
@@ -157,7 +161,7 @@ const PaymentPage = () => {
       month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   };
 
@@ -189,7 +193,7 @@ const PaymentPage = () => {
           <Text fontSize="2xl" fontWeight="bold">
             Supplier Payments
           </Text>
-          
+
           {/* Notification Bell */}
           <Menu>
             <MenuButton
@@ -229,17 +233,20 @@ const PaymentPage = () => {
                 )}
               </Flex>
               <Divider />
-              
+
               {notifications.length > 0 ? (
                 notifications.slice(0, 5).map((notification) => (
-                  <MenuItem 
-                    key={notification._id} 
+                  <MenuItem
+                    key={notification._id}
                     py={3}
                     bg={notification.read ? "transparent" : notificationBg}
                     onClick={() => markAsRead(notification._id)}
                   >
                     <VStack align="start" spacing={1}>
-                      <Text fontSize="sm" fontWeight={notification.read ? "normal" : "bold"}>
+                      <Text
+                        fontSize="sm"
+                        fontWeight={notification.read ? "normal" : "bold"}
+                      >
                         {notification.message}
                       </Text>
                       <Text fontSize="xs" color="gray.500">
@@ -297,7 +304,7 @@ const PaymentPage = () => {
                   </Text>
                   <Button
                     colorScheme="purple"
-                    onClick={() => handlePayment(order._id)}
+                    onClick={() => handlePayment(order._id)} 
                   >
                     Proceed to Payment
                   </Button>

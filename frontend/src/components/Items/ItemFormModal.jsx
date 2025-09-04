@@ -38,42 +38,65 @@ const ItemFormModal = ({
         <ModalCloseButton />
         <ModalBody py={6}>
           <VStack spacing={5}>
+            {/* Item Name */}
             <FormControl isRequired>
               <FormLabel>Item Name</FormLabel>
               <Input
                 value={item.name}
-                onChange={(e) => onChange('name', e.target.value)}
+                onChange={(e) => onChange("name", e.target.value)}
                 size="lg"
                 focusBorderColor="blue.500"
               />
             </FormControl>
 
+            {/* Description */}
             <FormControl>
               <FormLabel>Description</FormLabel>
               <Input
                 value={item.description}
-                onChange={(e) => onChange('description', e.target.value)}
+                onChange={(e) => onChange("description", e.target.value)}
                 size="lg"
                 focusBorderColor="blue.500"
               />
             </FormControl>
 
+            {/* Unit Price */}
             <FormControl isRequired>
-              <FormLabel>Unit Price ($)</FormLabel>
+              <FormLabel>Unit Price (Rs.)</FormLabel>
               <Input
                 type="number"
                 value={item.unitPrice}
-                onChange={(e) => onChange('unitPrice', e.target.value)}
+                onChange={(e) => onChange("unitPrice", e.target.value)}
                 size="lg"
                 focusBorderColor="blue.500"
               />
             </FormControl>
 
+            {/* Category */}
+            <FormControl isRequired>
+              <FormLabel>Category</FormLabel>
+              <Select
+                value={item.category || ""}
+                onChange={(e) => onChange("category", e.target.value)}
+                size="lg"
+                focusBorderColor="blue.500"
+                placeholder="Select category"
+              >
+                <option value="Dairy">Dairy</option>
+                <option value="Vegetables">Vegetables</option>
+                <option value="Snacks">Snacks</option>
+                <option value="Beverages">Beverages</option>
+                <option value="Bakery">Bakery</option>
+                <option value="Meat">Meat</option>
+              </Select>
+            </FormControl>
+
+            {/* Delivery Type */}
             <FormControl>
               <FormLabel>Delivery Type</FormLabel>
               <Select
                 value={item.deliveryType}
-                onChange={(e) => onChange('deliveryType', e.target.value)}
+                onChange={(e) => onChange("deliveryType", e.target.value)}
                 size="lg"
                 focusBorderColor="blue.500"
               >
@@ -83,11 +106,12 @@ const ItemFormModal = ({
               </Select>
             </FormControl>
 
+            {/* Stock Status */}
             <FormControl>
               <FormLabel>Stock Status</FormLabel>
               <Select
                 value={item.inStock}
-                onChange={(e) => onChange('inStock', e.target.value === "true")}
+                onChange={(e) => onChange("inStock", e.target.value === "true")}
                 size="lg"
                 focusBorderColor="blue.500"
               >

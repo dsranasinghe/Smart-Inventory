@@ -17,29 +17,66 @@ import {
   useToast,
   Alert,
   AlertIcon,
+  Spinner,
 } from "@chakra-ui/react";
 import Sidebar from "../components/sidebar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const CheckoutPage = () => {
+  const { orderId } = useParams();
+  const navigate = useNavigate();
+  const toast = useToast();
+  
   const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
   const secondaryColor = useColorModeValue("gray.500", "gray.300");
-  const toast = useToast();
   
   // State management
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("payhere");
   const [isLoading, setIsLoading] = useState(false);
+  const [order, setOrder] = useState(null);
+  const [supplier, setSupplier] = useState(null);
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Order items data
-  const orderItems = [
-    { name: "Tunnel Leather Rtg", price: 59.29, duration: "01-0 <Short> 4:00" },
-    { name: "Brew Vega Lounge", price: 49.90, duration: "01-0 <Short> 4:00" },
-  ];
+  // Fetch order and supplier data
+  useEffect(() => {
+    const fetchOrderData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const orderRes = await axios.get(`http://localhost:5000/api/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setOrder(orderRes.data);
+        
+        // Fetch supplier details
+        const supplierRes = await axios.get(`http://localhost:5000/api/suppliers/${orderRes.data.supplier}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSupplier(supplierRes.data);
+      } catch (error) {
+        console.error("Error fetching order data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load order details.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    
+    if (orderId) {
+      fetchOrderData();
+    }
+  }, [orderId, toast]);
 
-  // Calculate totals
-  const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
+  // Calculate totals based on actual order data
+  const subtotal = order ? order.orderTotal : 0;
   const total = subtotal * quantity;
 
   // Handle payment submission
@@ -48,10 +85,8 @@ const CheckoutPage = () => {
     
     try {
       if (paymentMethod === "payhere") {
-        // Implement PayHere payment integration
         await handlePayHerePayment();
       } else if (paymentMethod === "cod") {
-        // Handle COD order
         await handleCODOrder();
       }
     } catch (error) {
@@ -62,46 +97,168 @@ const CheckoutPage = () => {
         duration: 5000,
         isClosable: true,
       });
+      setIsLoading(false);
+    }
+  };
+
+  // REAL PayHere payment handler
+  const handlePayHerePayment = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user"));
+      
+      if (!order || !supplier) {
+        throw new Error("Order or supplier data not available");
+      }
+
+      // 1. Get payment hash from backend
+      const response = await axios.post(
+        'http://localhost:5000/api/payments/generate-hash',
+        {
+          order_id: order.orderNumber,
+          amount: total
+        },
+        {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const { hash, merchantId, amount, currency } = response.data;
+
+      // 2. Create payment object with ngrok URL
+      const payment = {
+        sandbox: true, // true for testing, false in production
+        merchant_id: merchantId,
+        return_url: `${window.location.origin}/payment-success`,
+        cancel_url: `${window.location.origin}/payment-cancel`,
+        notify_url: 'https://89c909283686.ngrok-free.app/api/payments/notify',
+        order_id: order.orderNumber,
+        items: `Payment to ${supplier.user?.username || 'Supplier'}`,
+        amount: amount,
+        currency: currency,
+        hash: hash,
+        first_name: user.first_name || user.username,
+        last_name: user.last_name || '',
+        email: user.email,
+        phone: supplier.phoneNumber || '0771234567',
+        address: supplier.address || 'KURUNAGALA',
+        city: 'Kurunagala',
+        country: 'Sri Lanka',
+        custom_1: user._id,     // manager_id
+        custom_2: supplier._id  // supplier_id
+      };
+
+      // 3. Set up payment handlers
+      window.payhere.onCompleted = function(onCompletedOrderId) {
+        console.log("Payment completed. OrderID:", onCompletedOrderId);
+        toast({
+          title: "Payment Successful",
+          description: "Your payment has been processed successfully.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        navigate('/payment-success');
+      };
+
+      window.payhere.onDismissed = function() {
+        console.log("Payment dismissed");
+        setIsLoading(false);
+        toast({
+          title: "Payment Cancelled",
+          description: "You cancelled the payment process.",
+          status: "info",
+          duration: 3000,
+          isClosable: true,
+        });
+      };
+
+      window.payhere.onError = function(error) {
+        console.log("Error:", error);
+        setIsLoading(false);
+        toast({
+          title: "Payment Error",
+          description: "An error occurred during payment processing.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      };
+
+      // 4. Start payment
+      window.payhere.startPayment(payment);
+
+    } catch (error) {
+      console.error('Payment initiation failed:', error);
+      setIsLoading(false);
+      toast({
+        title: "Payment Failed",
+        description: "Failed to initialize payment. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // COD order handler
+  const handleCODOrder = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:5000/api/orders/${orderId}/cod`,
+        { quantity },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      toast({
+        title: "COD Order Placed",
+        description: "Your Cash on Delivery order has been placed successfully.",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+      navigate('/orders');
+    } catch (error) {
+      console.error('COD order failed:', error);
+      toast({
+        title: "Order Failed",
+        description: "Failed to place COD order. Please try again.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // PayHere payment handler
-  const handlePayHerePayment = async () => {
-    // Implement your PayHere integration here
-    // This would typically redirect to PayHere or open a modal
-    toast({
-      title: "Redirecting to PayHere",
-      description: "You will be redirected to complete your payment.",
-      status: "info",
-      duration: 3000,
-      isClosable: true,
-    });
-    
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Payment Successful",
-        description: "Your payment has been processed successfully.",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-    }, 2000);
-  };
+  if (loadingData) {
+    return (
+      <Flex>
+        <Sidebar />
+        <Box p={8} flex={1} display="flex" alignItems="center" justifyContent="center">
+          <Spinner size="xl" />
+        </Box>
+      </Flex>
+    );
+  }
 
-  // COD order handler
-  const handleCODOrder = async () => {
-    // Implement COD order processing
-    toast({
-      title: "COD Order Placed",
-      description: "Your Cash on Delivery order has been placed successfully.",
-      status: "success",
-      duration: 5000,
-      isClosable: true,
-    });
-  };
+  if (!order) {
+    return (
+      <Flex>
+        <Sidebar />
+        <Box p={8} flex={1}>
+          <Text>Order not found</Text>
+        </Box>
+      </Flex>
+    );
+  }
 
   return (
     <Flex>
@@ -115,9 +272,9 @@ const CheckoutPage = () => {
           </Text>
           <HStack>
             <Text fontSize="md" color={secondaryColor}>
-              Pay Note
+              Order: {order.orderNumber}
             </Text>
-            <Tag size="md" colorScheme="purple">@Trunker</Tag>
+            <Tag size="md" colorScheme="purple">@{supplier?.user?.username || 'Supplier'}</Tag>
           </HStack>
         </VStack>
 
@@ -126,22 +283,21 @@ const CheckoutPage = () => {
           {/* User Details */}
           <HStack spacing={8} mb={4}>
             <Text fontWeight="medium" color={textColor}>
-              Trunker ID: <span style={{ fontWeight: "bold" }}>0381012</span>
+              Order ID: <span style={{ fontWeight: "bold" }}>{order.orderNumber}</span>
             </Text>
             <Text fontWeight="medium" color={textColor}>
-              Phone/EMR: <span style={{ fontWeight: "bold" }}>EMR: 0123456781*</span>
+              Supplier: <span style={{ fontWeight: "bold" }}>{supplier?.user?.username || 'Unknown'}</span>
             </Text>
           </HStack>
 
-          {/* Term Info */}
+          {/* Order Info */}
           <Text color={secondaryColor} mb={4}>
-            For term in <strong>100.00 minutes</strong>
+            Order Date: <strong>{new Date(order.orderDate).toLocaleDateString()}</strong>
           </Text>
 
           {/* Payment Note */}
           <Text fontSize="sm" color={textColor} mb={6}>
-            You propose each action, and it is considered by an expert associated with this business. 
-            Your proposed activities are treated as a priority policy.
+            Please complete the payment to process your order with {supplier?.user?.username || 'the supplier'}.
           </Text>
 
           {/* Order Summary */}
@@ -150,10 +306,12 @@ const CheckoutPage = () => {
               Order Summary
             </Text>
             <VStack spacing={3} align="stretch">
-              {orderItems.map((item, index) => (
+              {order.items && order.items.map((item, index) => (
                 <Flex justify="space-between" key={index}>
-                  <Text>{item.name}</Text>
-                  <Text fontSize="sm" color={secondaryColor}>{item.duration}</Text>
+                  <Text>{item.name || `Item ${index + 1}`}</Text>
+                  <Text fontSize="sm" color={secondaryColor}>
+                    Qty: {item.quantity || 1}
+                  </Text>
                 </Flex>
               ))}
             </VStack>
@@ -163,12 +321,12 @@ const CheckoutPage = () => {
 
           {/* Pricing */}
           <Box mb={6}>
-            {orderItems.map((item, index) => (
-              <Flex justify="space-between" align="center" mb={2} key={index}>
-                <Text fontWeight="medium" color={textColor}>Rs{item.price.toFixed(2)}</Text>
-                <Text fontWeight="medium" color={textColor}>Qty ${index + 1}</Text>
-              </Flex>
-            ))}
+            <Flex justify="space-between" align="center" mb={2}>
+              <Text fontWeight="medium" color={textColor}>Unit Price</Text>
+              <Text fontWeight="medium" color={textColor}>
+                Rs{(order.orderTotal || 0).toFixed(2)}
+              </Text>
+            </Flex>
             <Flex justify="space-between" align="center" mt={4}>
               <Text fontWeight="bold" color={textColor}>Quantity</Text>
               <Input 
@@ -187,10 +345,10 @@ const CheckoutPage = () => {
 
           {/* Total */}
           <Flex justify="space-between" align="center" mb={6}>
-            <Text fontSize="lg" fontWeight="bold" color={textColor}>Total</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor}>Total Amount</Text>
             <HStack>
               <Text fontSize="md" fontWeight="medium" color="green.400">
-                Holding 23% Value
+                Payment Due
               </Text>
               <Text fontSize="xl" fontWeight="bold" color="purple.500">
                 Rs{total.toFixed(2)}
@@ -252,8 +410,13 @@ const CheckoutPage = () => {
             >
               {paymentMethod === "payhere" ? "Pay Now" : "Place COD Order"}
             </Button>
-            <Button variant="outline" colorScheme="gray" flex={1}>
-              Shaping
+            <Button 
+              variant="outline" 
+              colorScheme="gray" 
+              flex={1}
+              onClick={() => navigate(-1)}
+            >
+              Go Back
             </Button>
           </HStack>
         </Box>

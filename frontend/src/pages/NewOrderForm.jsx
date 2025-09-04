@@ -38,11 +38,9 @@ const NewOrderPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -52,9 +50,12 @@ const NewOrderPage = () => {
     const fetchSuppliers = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:5000/api/suppliers", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get(
+          "http://localhost:5000/api/suppliers",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setSuppliers(response.data);
       } catch (error) {
         console.error("Error fetching suppliers:", error);
@@ -75,88 +76,97 @@ const NewOrderPage = () => {
 
   // Fetch supplier items when supplier is selected
   useEffect(() => {
-  const fetchSupplierItems = async () => {
-    if (!formData.supplier) {
-      setSupplierItems([]);
-      return;
-    }
+    const fetchSupplierItems = async () => {
+      if (!formData.supplier) {
+        setSupplierItems([]);
+        return;
+      }
 
-    setItemsLoading(true);
+      setItemsLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `http://localhost:5000/api/suppliers/${formData.supplier}/items`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setSupplierItems(response.data);
+      } catch (error) {
+        console.error("Error fetching supplier items:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch supplier items",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+
+    fetchSupplierItems();
+  }, [formData.supplier, toast]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`http://localhost:5000/api/suppliers/${formData.supplier}/items`, {
+      const selectedItem = supplierItems.find(
+        (item) => String(item._id) === String(formData.productName)
+      );
+
+      const unitPrice = selectedItem.unitPrice;
+      if (!selectedItem) {
+        throw new Error("Please select a valid product");
+      }
+
+      const quantity = parseInt(formData.quantity);
+      const orderTotal = unitPrice * quantity;
+
+      const orderData = {
+        items: [
+          {
+            item: formData.productName,
+            quantity: quantity,
+            unitPriceAtOrder: unitPrice,
+          },
+        ],
+        orderTotal: orderTotal, // Add this line
+        description: formData.description,
+        expectedDeliveryDate: formData.expectedDate,
+        supplier: formData.supplier,
+      };
+
+      console.log("Order data being sent:", orderData);
+      await axios.post(`http://localhost:5000/api/orders`, orderData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSupplierItems(response.data);
+
+      toast({
+        title: "Order Submitted",
+        description: "The order has been added successfully.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate("/orders");
     } catch (error) {
-      console.error("Error fetching supplier items:", error);
+      console.error("Error submitting order:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch supplier items",
+        description: error.response?.data?.message || "Failed to submit order",
         status: "error",
         duration: 3000,
         isClosable: true,
       });
     } finally {
-      setItemsLoading(false);
+      setLoading(false);
     }
   };
-
-  fetchSupplierItems();
-}, [formData.supplier, toast]);
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-
-  try {
-    const token = localStorage.getItem("token");
-    const selectedItem = supplierItems.find(item => item._id === formData.productName);
-    
-    if (!selectedItem) {
-      throw new Error("Please select a valid product");
-    }
-
-    const orderData = {
-      items: [{
-        item: formData.productName,
-        quantity: parseInt(formData.quantity),
-        unitPriceAtOrder: selectedItem.price
-      }],
-      description: formData.description,
-      expectedDeliveryDate: formData.expectedDate,
-      supplier: formData.supplier
-    };
-
-    console.log("Order data being sent:", orderData);
-    console.log("Supplier ID:", formData.supplier);
-    console.log("Token:", token);
-    await axios.post(`http://localhost:5000/api/orders`, orderData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    toast({
-      title: "Order Submitted",
-      description: "The order has been added successfully.",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-    navigate("/orders");
-  } catch (error) {
-    console.error("Error submitting order:", error);
-    toast({
-      title: "Error",
-      description: error.response?.data?.message || "Failed to submit order",
-      status: "error",
-      duration: 3000,
-      isClosable: true,
-    });
-  } finally {
-    setLoading(false);
-  }
-};
-
   const cardBg = useColorModeValue("white", "gray.700");
   const bgColor = useColorModeValue("gray.100", "gray.900");
   const labelColor = useColorModeValue("gray.700", "white");
@@ -224,7 +234,10 @@ const handleSubmit = async (e) => {
                 <FormLabel color={labelColor}>Product Category</FormLabel>
                 <Input
                   value={
-                    supplierItems.find(item => item._id === formData.productName)?.category || ""
+                    supplierItems.find(
+                      (item) =>
+                        String(item._id) === String(formData.productName)
+                    )?.category || ""
                   }
                   isReadOnly
                   placeholder="Category will auto-fill"
@@ -246,17 +259,6 @@ const handleSubmit = async (e) => {
 
             <VStack spacing={4} align="stretch">
               <FormControl>
-                <FormLabel color={labelColor}>Short Description (Optional)</FormLabel>
-                <Textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Add any notes or details..."
-                  rows={5}
-                />
-              </FormControl>
-
-              <FormControl>
                 <FormLabel color={labelColor}>Order Date</FormLabel>
                 <Input type="date" value={orderDate} isReadOnly />
               </FormControl>
@@ -276,7 +278,10 @@ const handleSubmit = async (e) => {
                 <FormLabel color={labelColor}>Unit Price</FormLabel>
                 <Input
                   value={
-                    supplierItems.find(item => item._id === formData.productName)?.price || ""
+                    supplierItems.find(
+                      (item) =>
+                        String(item._id) === String(formData.productName)
+                    )?.unitPrice || ""
                   }
                   isReadOnly
                   placeholder="Price will auto-fill"
@@ -285,12 +290,17 @@ const handleSubmit = async (e) => {
             </VStack>
           </SimpleGrid>
 
-          <Button 
-            type="submit" 
-            colorScheme="blue" 
+          <Button
+            type="submit"
+            colorScheme="blue"
             mt={6}
             isLoading={loading}
-            isDisabled={!formData.supplier || !formData.productName || !formData.quantity || !formData.expectedDate}
+            isDisabled={
+              !formData.supplier ||
+              !formData.productName ||
+              !formData.quantity ||
+              !formData.expectedDate
+            }
           >
             Submit Order
           </Button>

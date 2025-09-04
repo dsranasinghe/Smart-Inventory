@@ -15,6 +15,8 @@ import NewOrder from './pages/NewOrderForm';
 import Payment from './pages/Payment'; 
 import CheckoutPage from "./pages/PaymentCheckout"; 
 import SupplierList from './pages/SupplierList';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
 
 
 
@@ -37,7 +39,10 @@ function App() {
         <Route path="/orders" element={<OrderManager/>} />
         <Route path="/orders/new" element={<NewOrder />} /> 
         <Route path="/payment" element={<Payment />} /> 
-        <Route path="/payment/checkout" element={<CheckoutPage />} /> 
+        <Route path="/payment/checkout/:orderId" element={<CheckoutPage />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancel" element={<PaymentCancel />} />
+
       </Routes>
     </Router>
   );
