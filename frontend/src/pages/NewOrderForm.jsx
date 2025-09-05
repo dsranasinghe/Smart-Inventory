@@ -135,7 +135,7 @@ const NewOrderPage = () => {
             unitPriceAtOrder: unitPrice,
           },
         ],
-        orderTotal: orderTotal, // Add this line
+        orderTotal: orderTotal, 
         description: formData.description,
         expectedDeliveryDate: formData.expectedDate,
         supplier: formData.supplier,
@@ -153,8 +153,13 @@ const NewOrderPage = () => {
         duration: 3000,
         isClosable: true,
       });
+       // Redirect to payment page if payment status is pending
+    if (response.data.paymentStatus === 'Pending') {
+      navigate(`/payment/checkout/${response.data._id}`);
+    } else {
       navigate("/orders");
-    } catch (error) {
+    }
+  } catch (error) {
       console.error("Error submitting order:", error);
       toast({
         title: "Error",

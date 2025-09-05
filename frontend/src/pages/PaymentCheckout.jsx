@@ -102,108 +102,112 @@ const CheckoutPage = () => {
   };
 
   // REAL PayHere payment handler
-  const handlePayHerePayment = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user"));
-      
-      if (!order || !supplier) {
-        throw new Error("Order or supplier data not available");
-      }
+ const handlePayHerePayment = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user"));
+    
+    if (!order) {
+      throw new Error("Order data not available");
+    }
 
-      // 1. Get payment hash from backend
-      const response = await axios.post(
-        'http://localhost:5000/api/payments/generate-hash',
-        {
-          order_id: order.orderNumber,
-          amount: total
-        },
-        {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+    // Check if payhere is loaded
+    if (typeof window.payhere === 'undefined') {
+      throw new Error('PayHere payment gateway not loaded. Please refresh the page.');
+    }
 
-      const { hash, merchantId, amount, currency } = response.data;
-
-      // 2. Create payment object with ngrok URL
-      const payment = {
-        sandbox: true, // true for testing, false in production
-        merchant_id: merchantId,
-        return_url: `${window.location.origin}/payment-success`,
-        cancel_url: `${window.location.origin}/payment-cancel`,
-        notify_url: 'https://89c909283686.ngrok-free.app/api/payments/notify',
+    // 1. Get payment hash from backend
+    const response = await axios.post(
+      'http://localhost:5000/api/payments/generate-hash',
+      {
         order_id: order.orderNumber,
-        items: `Payment to ${supplier.user?.username || 'Supplier'}`,
-        amount: amount,
-        currency: currency,
-        hash: hash,
-        first_name: user.first_name || user.username,
-        last_name: user.last_name || '',
-        email: user.email,
-        phone: supplier.phoneNumber || '0771234567',
-        address: supplier.address || 'KURUNAGALA',
-        city: 'Kurunagala',
-        country: 'Sri Lanka',
-        custom_1: user._id,     // manager_id
-        custom_2: supplier._id  // supplier_id
-      };
+        amount: total
+      },
+      {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
-      // 3. Set up payment handlers
-      window.payhere.onCompleted = function(onCompletedOrderId) {
-        console.log("Payment completed. OrderID:", onCompletedOrderId);
-        toast({
-          title: "Payment Successful",
-          description: "Your payment has been processed successfully.",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-        navigate('/payment-success');
-      };
+    const { hash, merchantId, amount, currency } = response.data;
 
-      window.payhere.onDismissed = function() {
-        console.log("Payment dismissed");
-        setIsLoading(false);
-        toast({
-          title: "Payment Cancelled",
-          description: "You cancelled the payment process.",
-          status: "info",
-          duration: 3000,
-          isClosable: true,
-        });
-      };
+    // 2. Create payment object
+    const payment = {
+      sandbox: true, // true for testing, false in production
+      merchant_id: merchantId,
+      return_url: `${window.location.origin}/payment-success`,
+      cancel_url: `${window.location.origin}/payment-cancel`,
+      notify_url: 'http://localhost:5000/api/payments/notify',
+      order_id: order.orderNumber,
+      items: `Payment for Order ${order.orderNumber}`,
+      amount: amount,
+      currency: currency,
+      hash: hash,
+      first_name: user?.first_name || user?.username || 'Customer',
+      last_name: user?.last_name || '',
+      email: user?.email || 'customer@example.com',
+      phone: supplier?.phoneNumber || '0771234567',
+      address: supplier?.address || 'Colombo',
+      city: 'Colombo',
+      country: 'Sri Lanka',
+      custom_1: user?._id || 'manager_id',
+      custom_2: order.supplier?._id || order.supplier
+    };
 
-      window.payhere.onError = function(error) {
-        console.log("Error:", error);
-        setIsLoading(false);
-        toast({
-          title: "Payment Error",
-          description: "An error occurred during payment processing.",
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      };
+    // 3. Set up payment handlers
+    window.payhere.onCompleted = function(onCompletedOrderId) {
+      console.log("Payment completed. OrderID:", onCompletedOrderId);
+      toast({
+        title: "Payment Successful",
+        description: "Your payment has been processed successfully.",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+      navigate('/payment-success');
+    };
 
-      // 4. Start payment
-      window.payhere.startPayment(payment);
-
-    } catch (error) {
-      console.error('Payment initiation failed:', error);
+    window.payhere.onDismissed = function() {
+      console.log("Payment dismissed");
       setIsLoading(false);
       toast({
-        title: "Payment Failed",
-        description: "Failed to initialize payment. Please try again.",
+        title: "Payment Cancelled",
+        description: "You cancelled the payment process.",
+        status: "info",
+        duration: 3000,
+        isClosable: true,
+      });
+    };
+
+    window.payhere.onError = function(error) {
+      console.log("Error:", error);
+      setIsLoading(false);
+      toast({
+        title: "Payment Error",
+        description: "An error occurred during payment processing.",
         status: "error",
         duration: 5000,
         isClosable: true,
       });
-    }
-  };
+    };
 
+    // 4. Start payment
+    window.payhere.startPayment(payment);
+
+  } catch (error) {
+    console.error('Payment initiation failed:', error);
+    setIsLoading(false);
+    toast({
+      title: "Payment Failed",
+      description: error.message || "Failed to initialize payment. Please try again.",
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+};
   // COD order handler
   const handleCODOrder = async () => {
     try {

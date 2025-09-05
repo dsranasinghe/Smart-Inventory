@@ -145,3 +145,24 @@ export const getSupplierPayments = async (req, res) => {
     res.status(500).json({ error: "Error fetching payment history" });
   }
 };
+
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentStatus } = req.body;
+    
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { paymentStatus },
+      { new: true }
+    );
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};

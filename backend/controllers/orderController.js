@@ -43,7 +43,8 @@ export const createOrder = async (req, res) => {
       expectedDeliveryDate,
       supplier: supplierExists._id,
       manager: managerId,
-      orderTotal
+      orderTotal,
+      paymentStatus: 'Pending' // Set initial payment status to 'Pending'
     });
 
     const savedOrder = await order.save();
@@ -84,6 +85,7 @@ const orders = await Order.find({ manager: managerId })
       select: 'username email'
     }
   })
+  .populate('manager', 'username email')
   .populate('items.item', 'name category price unitPrice')
   .sort({ orderDate: -1 });
 
@@ -192,5 +194,31 @@ export const updatePaymentStatus = async (req, res) => {
     res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Get a single order by ID
+export const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    // Validate if orderId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID format' });
+    }
+    
+    const order = await Order.findById(orderId)
+      .populate('supplier', 'user')
+      .populate('manager', 'username email')
+      .populate('items.item', 'name category unitPrice');
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    res.status(500).json({ message: "Server error fetching order" });
   }
 };
