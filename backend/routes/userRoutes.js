@@ -27,6 +27,7 @@ import {
   updatePaymentStatus, 
   getOrderById,
 } from "../controllers/orderController.js";
+import { getDashboardData, getLowStockItems, getRecentOrders, getRecentTransactions } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
@@ -92,4 +93,9 @@ router.get("/orders/:orderId", authenticate, getOrderById);
 
 router.get("/test-manager", testManager);
 
+// Add these routes to your backend
+router.get('/dashboard', authenticate, getDashboardData);
+router.get('/items/low-stock', authenticate, getLowStockItems);
+router.get('/orders/recent', authenticate, getRecentOrders);
+router.get('/transactions/recent', authenticate, getRecentTransactions);
 export default router;
