@@ -181,15 +181,6 @@ const OrdersPage = () => {
                           colorScheme="red"
                           variant="ghost"
                         />
-                        {order.paymentStatus === 'Pending' && (
-                          <Button
-                            size="sm"
-                            colorScheme="blue"
-                            onClick={() => navigate(`/payment/checkout/${order._id}`)}
-                          >
-                            Pay Now
-                          </Button>
-                        )}
                       </HStack>
                     </Td>
                   </Tr>

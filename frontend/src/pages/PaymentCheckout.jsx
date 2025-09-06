@@ -41,26 +41,42 @@ const CheckoutPage = () => {
   const [supplier, setSupplier] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
 
-  // Fetch order and supplier data
+  // Fix the order data fetching in useEffect
   useEffect(() => {
     const fetchOrderData = async () => {
       try {
         const token = localStorage.getItem("token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+        
         const orderRes = await axios.get(`http://localhost:5000/api/orders/${orderId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
+        if (!orderRes.data) {
+          throw new Error("No order data returned from API");
+        }
+        
         setOrder(orderRes.data);
         
-        // Fetch supplier details
-        const supplierRes = await axios.get(`http://localhost:5000/api/suppliers/${orderRes.data.supplier}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setSupplier(supplierRes.data);
+        // Check if supplier data exists before fetching
+        if (orderRes.data.supplier) {
+          const supplierRes = await axios.get(
+            `http://localhost:5000/api/suppliers/${orderRes.data.supplier}`, 
+            {
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+          setSupplier(supplierRes.data);
+        } else {
+          console.warn("No supplier ID found in order data");
+        }
       } catch (error) {
         console.error("Error fetching order data:", error);
         toast({
           title: "Error",
-          description: "Failed to load order details.",
+          description: error.response?.data?.message || "Failed to load order details.",
           status: "error",
           duration: 5000,
           isClosable: true,
@@ -72,6 +88,15 @@ const CheckoutPage = () => {
     
     if (orderId) {
       fetchOrderData();
+    } else {
+      toast({
+        title: "Error",
+        description: "No order ID provided",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      setLoadingData(false);
     }
   }, [orderId, toast]);
 
@@ -102,112 +127,126 @@ const CheckoutPage = () => {
   };
 
   // REAL PayHere payment handler
- const handlePayHerePayment = async () => {
-  try {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user"));
-    
-    if (!order) {
-      throw new Error("Order data not available");
-    }
-
-    // Check if payhere is loaded
-    if (typeof window.payhere === 'undefined') {
-      throw new Error('PayHere payment gateway not loaded. Please refresh the page.');
-    }
-
-    // 1. Get payment hash from backend
-    const response = await axios.post(
-      'http://localhost:5000/api/payments/generate-hash',
-      {
-        order_id: order.orderNumber,
-        amount: total
-      },
-      {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+  const handlePayHerePayment = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      // FIXED: Changed from "user" to "users" to match your collection name
+      const userData = localStorage.getItem("users");
+      const user = userData ? JSON.parse(userData) : null;
+      
+      if (!order) {
+        throw new Error("Order data not available");
       }
-    );
 
-    const { hash, merchantId, amount, currency } = response.data;
+      // Check if payhere is loaded
+      if (typeof window.payhere === 'undefined') {
+        throw new Error('PayHere payment gateway not loaded. Please refresh the page.');
+      }
 
-    // 2. Create payment object
-    const payment = {
-      sandbox: true, // true for testing, false in production
-      merchant_id: merchantId,
-      return_url: `${window.location.origin}/payment-success`,
-      cancel_url: `${window.location.origin}/payment-cancel`,
-      notify_url: 'http://localhost:5000/api/payments/notify',
-      order_id: order.orderNumber,
-      items: `Payment for Order ${order.orderNumber}`,
-      amount: amount,
-      currency: currency,
-      hash: hash,
-      first_name: user?.first_name || user?.username || 'Customer',
-      last_name: user?.last_name || '',
-      email: user?.email || 'customer@example.com',
-      phone: supplier?.phoneNumber || '0771234567',
-      address: supplier?.address || 'Colombo',
-      city: 'Colombo',
-      country: 'Sri Lanka',
-      custom_1: user?._id || 'manager_id',
-      custom_2: order.supplier?._id || order.supplier
-    };
+      // 1. Get payment hash from backend
+      const response = await axios.post(
+        'http://localhost:5000/api/payments/generate-hash',
+        {
+          order_id: order.orderNumber,
+          amount: total
+        },
+        {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-    // 3. Set up payment handlers
-    window.payhere.onCompleted = function(onCompletedOrderId) {
-      console.log("Payment completed. OrderID:", onCompletedOrderId);
-      toast({
-        title: "Payment Successful",
-        description: "Your payment has been processed successfully.",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-      navigate('/payment-success');
-    };
+      // Check if hash was generated successfully
+      if (!response.data.hash) {
+        throw new Error("Failed to generate payment hash");
+      }
 
-    window.payhere.onDismissed = function() {
-      console.log("Payment dismissed");
+      const { hash, merchantId, amount, currency } = response.data;
+
+      // FIXED: Updated to match your actual supplier data structure
+      // If your suppliers collection has different field names, update these:
+      const supplierPhone = supplier?.phone || supplier?.phoneNumber || '0771234567';
+      const supplierAddress = supplier?.address || supplier?.location || 'Colombo';
+      const supplierId = supplier?._id || order.supplier;
+
+      // 2. Create payment object
+      const payment = {
+        sandbox: true, // true for testing, false in production
+        merchant_id: merchantId,
+        return_url: `${window.location.origin}/payment-success`,
+        cancel_url: `${window.location.origin}/payment-cancel`,
+        notify_url: 'http://localhost:5000/api/payments/notify',
+        order_id: order.orderNumber,
+        items: `Payment for Order ${order.orderNumber}`,
+        amount: amount,
+        currency: currency,
+        hash: hash,
+        first_name: user?.first_name || user?.username || 'Customer',
+        last_name: user?.last_name || '',
+        email: user?.email || 'customer@example.com',
+        phone: supplierPhone,
+        address: supplierAddress,
+        city: 'Colombo',
+        country: 'Sri Lanka',
+        custom_1: user?._id || 'manager_id',
+        custom_2: supplierId
+      };
+
+      // 3. Set up payment handlers
+      window.payhere.onCompleted = function(onCompletedOrderId) {
+        console.log("Payment completed. OrderID:", onCompletedOrderId);
+        toast({
+          title: "Payment Successful",
+          description: "Your payment has been processed successfully.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        navigate('/payment-success');
+      };
+
+      window.payhere.onDismissed = function() {
+        console.log("Payment dismissed");
+        setIsLoading(false);
+        toast({
+          title: "Payment Cancelled",
+          description: "You cancelled the payment process.",
+          status: "info",
+          duration: 3000,
+          isClosable: true,
+        });
+      };
+
+      window.payhere.onError = function(error) {
+        console.log("Error:", error);
+        setIsLoading(false);
+        toast({
+          title: "Payment Error",
+          description: "An error occurred during payment processing.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      };
+
+      // 4. Start payment
+      window.payhere.startPayment(payment);
+
+    } catch (error) {
+      console.error('Payment initiation failed:', error);
       setIsLoading(false);
       toast({
-        title: "Payment Cancelled",
-        description: "You cancelled the payment process.",
-        status: "info",
-        duration: 3000,
-        isClosable: true,
-      });
-    };
-
-    window.payhere.onError = function(error) {
-      console.log("Error:", error);
-      setIsLoading(false);
-      toast({
-        title: "Payment Error",
-        description: "An error occurred during payment processing.",
+        title: "Payment Failed",
+        description: error.message || "Failed to initialize payment. Please try again.",
         status: "error",
         duration: 5000,
         isClosable: true,
       });
-    };
+    }
+  };
 
-    // 4. Start payment
-    window.payhere.startPayment(payment);
-
-  } catch (error) {
-    console.error('Payment initiation failed:', error);
-    setIsLoading(false);
-    toast({
-      title: "Payment Failed",
-      description: error.message || "Failed to initialize payment. Please try again.",
-      status: "error",
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-};
   // COD order handler
   const handleCODOrder = async () => {
     try {
@@ -247,7 +286,10 @@ const CheckoutPage = () => {
       <Flex>
         <Sidebar />
         <Box p={8} flex={1} display="flex" alignItems="center" justifyContent="center">
-          <Spinner size="xl" />
+          <VStack spacing={4}>
+            <Spinner size="xl" thickness="4px" speed="0.65s" color="purple.500" />
+            <Text color={textColor}>Loading order details...</Text>
+          </VStack>
         </Box>
       </Flex>
     );
@@ -258,7 +300,16 @@ const CheckoutPage = () => {
       <Flex>
         <Sidebar />
         <Box p={8} flex={1}>
-          <Text>Order not found</Text>
+          <Alert status="error" borderRadius="md">
+            <AlertIcon />
+            <VStack align="start" spacing={0}>
+              <Text fontWeight="bold">Order not found</Text>
+              <Text fontSize="sm">The requested order could not be loaded.</Text>
+            </VStack>
+          </Alert>
+          <Button mt={4} colorScheme="purple" onClick={() => navigate('/orders')}>
+            Back to Orders
+          </Button>
         </Box>
       </Flex>
     );
@@ -278,7 +329,10 @@ const CheckoutPage = () => {
             <Text fontSize="md" color={secondaryColor}>
               Order: {order.orderNumber}
             </Text>
-            <Tag size="md" colorScheme="purple">@{supplier?.user?.username || 'Supplier'}</Tag>
+            <Tag size="md" colorScheme="purple">
+              {/* FIXED: Updated to match your supplier data structure */}
+              @{supplier?.username || supplier?.name || 'Supplier'}
+            </Tag>
           </HStack>
         </VStack>
 
@@ -290,7 +344,8 @@ const CheckoutPage = () => {
               Order ID: <span style={{ fontWeight: "bold" }}>{order.orderNumber}</span>
             </Text>
             <Text fontWeight="medium" color={textColor}>
-              Supplier: <span style={{ fontWeight: "bold" }}>{supplier?.user?.username || 'Unknown'}</span>
+              {/* FIXED: Updated to match your supplier data structure */}
+              Supplier: <span style={{ fontWeight: "bold" }}>{supplier?.username || supplier?.name || 'Unknown'}</span>
             </Text>
           </HStack>
 
@@ -301,7 +356,8 @@ const CheckoutPage = () => {
 
           {/* Payment Note */}
           <Text fontSize="sm" color={textColor} mb={6}>
-            Please complete the payment to process your order with {supplier?.user?.username || 'the supplier'}.
+            {/* FIXED: Updated to match your supplier data structure */}
+            Please complete the payment to process your order with {supplier?.username || supplier?.name || 'the supplier'}.
           </Text>
 
           {/* Order Summary */}
