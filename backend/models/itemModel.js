@@ -1,38 +1,39 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const itemSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
   },
   description: {
     type: String,
-    default: ''
+    default: "",
   },
   unitPrice: {
     type: Number,
     required: true,
-    min: 0
+    min: 0,
   },
+  category: { type: String, required: false },
   deliveryType: {
     type: String,
-    enum: ['Standard', 'Express', 'Overnight'],
-    default: 'Standard'
+    enum: ["Standard", "Express", "Overnight"],
+    default: "Standard",
   },
   inStock: {
     type: Boolean,
-    default: true
+    default: true,
   },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Supplier',
-    required: true
+    ref: "Supplier",
+    required: true,
   },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-export default mongoose.model('Item', itemSchema);
+export default mongoose.model("Item", itemSchema);

@@ -124,6 +124,7 @@ const OrdersPage = () => {
                 <Th>Quantity</Th>
                 <Th>Order Date</Th>
                 <Th>Status</Th>
+                <Th>Payment Status</Th>
                 <Th textAlign="center">Actions</Th>
               </Tr>
             </Thead>
@@ -133,8 +134,8 @@ const OrdersPage = () => {
                   <Tr key={order._id}>
                     <Td>{order.orderNumber}</Td>
                     <Td>{order.items[0]?.item?.name || "N/A"}</Td>
-                     <Td>{order.supplier?.user?.username || "N/A"}</Td>                    
-                     <Td>{order.items[0]?.quantity || "N/A"}</Td>
+                    <Td>{order.supplier?.user?.username || "N/A"}</Td>                    
+                    <Td>{order.items[0]?.quantity || "N/A"}</Td>
                     <Td>{new Date(order.orderDate).toLocaleDateString()}</Td>
                     <Td>
                       <Badge
@@ -149,6 +150,19 @@ const OrdersPage = () => {
                         }
                       >
                         {order.deliveryStatus}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      <Badge
+                        colorScheme={
+                          order.paymentStatus === 'Paid' 
+                            ? 'green' 
+                            : order.paymentStatus === 'Failed'
+                            ? 'red' 
+                            : 'orange'
+                        }
+                      >
+                        {order.paymentStatus}
                       </Badge>
                     </Td>
                     <Td>
@@ -173,7 +187,7 @@ const OrdersPage = () => {
                 ))
               ) : (
                 <Tr>
-                  <Td colSpan={7} textAlign="center">
+                  <Td colSpan={8} textAlign="center">
                     No orders found.
                   </Td>
                 </Tr>
