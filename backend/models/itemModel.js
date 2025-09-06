@@ -1,3 +1,4 @@
+// models/itemModel.js
 import mongoose from "mongoose";
 
 const itemSchema = new mongoose.Schema({
@@ -15,7 +16,19 @@ const itemSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
-  category: { type: String, required: false },
+  category: { 
+    type: String, 
+    required: false 
+  },
+  currentStock: { // ADD THIS FIELD
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  minimumStock: { // ADD THIS FIELD
+    type: Number,
+    default: 10
+  },
   deliveryType: {
     type: String,
     enum: ["Standard", "Express", "Overnight"],

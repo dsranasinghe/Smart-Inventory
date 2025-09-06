@@ -28,6 +28,7 @@ export const register = async (req, res) => {
     if (role === 'supplier') {
       const supplier = new Supplier({
         user: user._id,
+        name: username, 
         phoneNumber: phoneNumber || '',
         address: address || '',
         itemsSupplied: [],
