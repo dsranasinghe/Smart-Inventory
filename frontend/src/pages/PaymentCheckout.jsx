@@ -28,11 +28,11 @@ const CheckoutPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  
+
   const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
   const secondaryColor = useColorModeValue("gray.500", "gray.300");
-  
+
   // State management
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("payhere");
@@ -49,34 +49,78 @@ const CheckoutPage = () => {
         if (!token) {
           throw new Error("No authentication token found");
         }
-        
-        const orderRes = await axios.get(`http://localhost:5000/api/orders/${orderId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
+
+        const orderRes = await axios.get(
+          `http://localhost:5000/api/orders/${orderId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
         if (!orderRes.data) {
           throw new Error("No order data returned from API");
         }
-        
+
         setOrder(orderRes.data);
-        
-        // Check if supplier data exists before fetching
+
+        // Check the structure of the supplier data in the order response
+        console.log("Order data:", orderRes.data);
+        console.log("Supplier data in order:", orderRes.data.supplier);
+
+        // Handle different supplier data structures
         if (orderRes.data.supplier) {
-          const supplierRes = await axios.get(
-            `http://localhost:5000/api/suppliers/${orderRes.data.supplier}`, 
-            {
-              headers: { Authorization: `Bearer ${token}` }
+          // Case 1: Supplier is an embedded object with user data
+          if (
+            orderRes.data.supplier.user &&
+            orderRes.data.supplier.user.username
+          ) {
+            setSupplier(orderRes.data.supplier);
+          }
+          // Case 2: Supplier is just an ID string, need to fetch details
+          else if (typeof orderRes.data.supplier === "string") {
+            try {
+              const supplierRes = await axios.get(
+                `http://localhost:5000/api/suppliers/${orderRes.data.supplier}`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+              setSupplier(supplierRes.data);
+            } catch (supplierError) {
+              console.warn("Failed to fetch supplier details:", supplierError);
+              // Fallback: create a minimal supplier object
+              setSupplier({
+                username: "Unknown Supplier",
+                _id: orderRes.data.supplier,
+              });
             }
-          );
-          setSupplier(supplierRes.data);
+          }
+          // Case 3: Supplier is already a full object but with different structure
+          else if (
+            orderRes.data.supplier.username ||
+            orderRes.data.supplier.name
+          ) {
+            setSupplier(orderRes.data.supplier);
+          } else {
+            console.warn(
+              "Unexpected supplier data structure:",
+              orderRes.data.supplier
+            );
+            setSupplier({
+              username: "Unknown Supplier",
+              ...orderRes.data.supplier,
+            });
+          }
         } else {
-          console.warn("No supplier ID found in order data");
+          console.warn("No supplier data found in order");
+          setSupplier({ username: "Unknown Supplier" });
         }
       } catch (error) {
         console.error("Error fetching order data:", error);
         toast({
           title: "Error",
-          description: error.response?.data?.message || "Failed to load order details.",
+          description:
+            error.response?.data?.message || "Failed to load order details.",
           status: "error",
           duration: 5000,
           isClosable: true,
@@ -85,7 +129,7 @@ const CheckoutPage = () => {
         setLoadingData(false);
       }
     };
-    
+
     if (orderId) {
       fetchOrderData();
     } else {
@@ -100,6 +144,32 @@ const CheckoutPage = () => {
     }
   }, [orderId, toast]);
 
+  // Helper function to get supplier name
+  const getSupplierName = () => {
+    if (!order?.supplier) return "Unknown Supplier";
+    return (
+      order.supplier.user?.username ||
+      order.supplier.username ||
+      order.supplier.name ||
+      order.supplier.businessName ||
+      "Unknown Supplier"
+    );
+  };
+
+  // Helper function to get supplier contact info
+  const getSupplierContact = () => {
+    if (!order?.supplier) return {};
+
+    return {
+      phone: order.supplier.user?.phone || order.supplier.phone || "0771234567",
+      address:
+        order.supplier.user?.address || order.supplier.address || "Colombo",
+      email:
+        order.supplier.user?.email ||
+        order.supplier.email ||
+        "supplier@example.com",
+    };
+  };
   // Calculate totals based on actual order data
   const subtotal = order ? order.orderTotal : 0;
   const total = subtotal * quantity;
@@ -107,7 +177,7 @@ const CheckoutPage = () => {
   // Handle payment submission
   const handleSubmit = async () => {
     setIsLoading(true);
-    
+
     try {
       if (paymentMethod === "payhere") {
         await handlePayHerePayment();
@@ -130,31 +200,35 @@ const CheckoutPage = () => {
   const handlePayHerePayment = async () => {
     try {
       const token = localStorage.getItem("token");
-      // FIXED: Changed from "user" to "users" to match your collection name
-      const userData = localStorage.getItem("users");
+      const userData =
+        localStorage.getItem("user") || localStorage.getItem("users");
       const user = userData ? JSON.parse(userData) : null;
-      
+
       if (!order) {
         throw new Error("Order data not available");
       }
 
       // Check if payhere is loaded
-      if (typeof window.payhere === 'undefined') {
-        throw new Error('PayHere payment gateway not loaded. Please refresh the page.');
+      if (typeof window.payhere === "undefined") {
+        throw new Error(
+          "PayHere payment gateway not loaded. Please refresh the page."
+        );
       }
+
+      const supplierContact = getSupplierContact();
 
       // 1. Get payment hash from backend
       const response = await axios.post(
-        'http://localhost:5000/api/payments/generate-hash',
+        "http://localhost:5000/api/payments/generate-hash",
         {
           order_id: order.orderNumber,
-          amount: total
+          amount: total,
         },
         {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -165,37 +239,34 @@ const CheckoutPage = () => {
 
       const { hash, merchantId, amount, currency } = response.data;
 
-      // FIXED: Updated to match your actual supplier data structure
-      // If your suppliers collection has different field names, update these:
-      const supplierPhone = supplier?.phone || supplier?.phoneNumber || '0771234567';
-      const supplierAddress = supplier?.address || supplier?.location || 'Colombo';
-      const supplierId = supplier?._id || order.supplier;
-
       // 2. Create payment object
       const payment = {
-        sandbox: true, // true for testing, false in production
+        sandbox: true,
         merchant_id: merchantId,
         return_url: `${window.location.origin}/payment-success`,
         cancel_url: `${window.location.origin}/payment-cancel`,
-        notify_url: 'http://localhost:5000/api/payments/notify',
+        notify_url: "http://localhost:5000/api/payments/notify",
         order_id: order.orderNumber,
         items: `Payment for Order ${order.orderNumber}`,
         amount: amount,
         currency: currency,
         hash: hash,
-        first_name: user?.first_name || user?.username || 'Customer',
-        last_name: user?.last_name || '',
-        email: user?.email || 'customer@example.com',
-        phone: supplierPhone,
-        address: supplierAddress,
-        city: 'Colombo',
-        country: 'Sri Lanka',
-        custom_1: user?._id || 'manager_id',
-        custom_2: supplierId
+
+        // Use username if first_name is not available
+        first_name: user?.first_name || user?.username || "Customer",
+        last_name: user?.last_name || " ",
+        email: user?.email || "customer@example.com",
+        phone: supplierContact.phone,
+        address: supplierContact.address,
+        city: "Colombo",
+        country: "Sri Lanka",
+
+        custom_1: user?._id || "manager_id",
+        custom_2: order.supplier?._id || order.supplier,
       };
 
       // 3. Set up payment handlers
-      window.payhere.onCompleted = function(onCompletedOrderId) {
+      window.payhere.onCompleted = function (onCompletedOrderId) {
         console.log("Payment completed. OrderID:", onCompletedOrderId);
         toast({
           title: "Payment Successful",
@@ -204,10 +275,10 @@ const CheckoutPage = () => {
           duration: 5000,
           isClosable: true,
         });
-        navigate('/payment-success');
+        navigate("/payment-success");
       };
 
-      window.payhere.onDismissed = function() {
+      window.payhere.onDismissed = function () {
         console.log("Payment dismissed");
         setIsLoading(false);
         toast({
@@ -219,7 +290,7 @@ const CheckoutPage = () => {
         });
       };
 
-      window.payhere.onError = function(error) {
+      window.payhere.onError = function (error) {
         console.log("Error:", error);
         setIsLoading(false);
         toast({
@@ -233,13 +304,13 @@ const CheckoutPage = () => {
 
       // 4. Start payment
       window.payhere.startPayment(payment);
-
     } catch (error) {
-      console.error('Payment initiation failed:', error);
+      console.error("Payment initiation failed:", error);
       setIsLoading(false);
       toast({
         title: "Payment Failed",
-        description: error.message || "Failed to initialize payment. Please try again.",
+        description:
+          error.message || "Failed to initialize payment. Please try again.",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -255,20 +326,21 @@ const CheckoutPage = () => {
         `http://localhost:5000/api/orders/${orderId}/cod`,
         { quantity },
         {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
-      
+
       toast({
         title: "COD Order Placed",
-        description: "Your Cash on Delivery order has been placed successfully.",
+        description:
+          "Your Cash on Delivery order has been placed successfully.",
         status: "success",
         duration: 5000,
         isClosable: true,
       });
-      navigate('/orders');
+      navigate("/orders");
     } catch (error) {
-      console.error('COD order failed:', error);
+      console.error("COD order failed:", error);
       toast({
         title: "Order Failed",
         description: "Failed to place COD order. Please try again.",
@@ -285,9 +357,20 @@ const CheckoutPage = () => {
     return (
       <Flex>
         <Sidebar />
-        <Box p={8} flex={1} display="flex" alignItems="center" justifyContent="center">
+        <Box
+          p={8}
+          flex={1}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
           <VStack spacing={4}>
-            <Spinner size="xl" thickness="4px" speed="0.65s" color="purple.500" />
+            <Spinner
+              size="xl"
+              thickness="4px"
+              speed="0.65s"
+              color="purple.500"
+            />
             <Text color={textColor}>Loading order details...</Text>
           </VStack>
         </Box>
@@ -304,10 +387,16 @@ const CheckoutPage = () => {
             <AlertIcon />
             <VStack align="start" spacing={0}>
               <Text fontWeight="bold">Order not found</Text>
-              <Text fontSize="sm">The requested order could not be loaded.</Text>
+              <Text fontSize="sm">
+                The requested order could not be loaded.
+              </Text>
             </VStack>
           </Alert>
-          <Button mt={4} colorScheme="purple" onClick={() => navigate('/orders')}>
+          <Button
+            mt={4}
+            colorScheme="purple"
+            onClick={() => navigate("/orders")}
+          >
             Back to Orders
           </Button>
         </Box>
@@ -330,8 +419,7 @@ const CheckoutPage = () => {
               Order: {order.orderNumber}
             </Text>
             <Tag size="md" colorScheme="purple">
-              {/* FIXED: Updated to match your supplier data structure */}
-              @{supplier?.username || supplier?.name || 'Supplier'}
+              @{getSupplierName()}
             </Tag>
           </HStack>
         </VStack>
@@ -341,23 +429,25 @@ const CheckoutPage = () => {
           {/* User Details */}
           <HStack spacing={8} mb={4}>
             <Text fontWeight="medium" color={textColor}>
-              Order ID: <span style={{ fontWeight: "bold" }}>{order.orderNumber}</span>
+              Order ID:{" "}
+              <span style={{ fontWeight: "bold" }}>{order.orderNumber}</span>
             </Text>
             <Text fontWeight="medium" color={textColor}>
-              {/* FIXED: Updated to match your supplier data structure */}
-              Supplier: <span style={{ fontWeight: "bold" }}>{supplier?.username || supplier?.name || 'Unknown'}</span>
+              Supplier:{" "}
+              <span style={{ fontWeight: "bold" }}>{getSupplierName()}</span>
             </Text>
           </HStack>
 
           {/* Order Info */}
           <Text color={secondaryColor} mb={4}>
-            Order Date: <strong>{new Date(order.orderDate).toLocaleDateString()}</strong>
+            Order Date:{" "}
+            <strong>{new Date(order.orderDate).toLocaleDateString()}</strong>
           </Text>
 
           {/* Payment Note */}
           <Text fontSize="sm" color={textColor} mb={6}>
-            {/* FIXED: Updated to match your supplier data structure */}
-            Please complete the payment to process your order with {supplier?.username || supplier?.name || 'the supplier'}.
+            Please complete the payment to process your order with{" "}
+            {getSupplierName()}.
           </Text>
 
           {/* Order Summary */}
@@ -366,14 +456,15 @@ const CheckoutPage = () => {
               Order Summary
             </Text>
             <VStack spacing={3} align="stretch">
-              {order.items && order.items.map((item, index) => (
-                <Flex justify="space-between" key={index}>
-                  <Text>{item.name || `Item ${index + 1}`}</Text>
-                  <Text fontSize="sm" color={secondaryColor}>
-                    Qty: {item.quantity || 1}
-                  </Text>
-                </Flex>
-              ))}
+              {order.items &&
+                order.items.map((item, index) => (
+                  <Flex justify="space-between" key={index}>
+                    <Text>{item.name || `Item ${index + 1}`}</Text>
+                    <Text fontSize="sm" color={secondaryColor}>
+                      Qty: {item.quantity || 1}
+                    </Text>
+                  </Flex>
+                ))}
             </VStack>
           </Box>
 
@@ -382,21 +473,25 @@ const CheckoutPage = () => {
           {/* Pricing */}
           <Box mb={6}>
             <Flex justify="space-between" align="center" mb={2}>
-              <Text fontWeight="medium" color={textColor}>Unit Price</Text>
+              <Text fontWeight="medium" color={textColor}>
+                Unit Price
+              </Text>
               <Text fontWeight="medium" color={textColor}>
                 Rs{(order.orderTotal || 0).toFixed(2)}
               </Text>
             </Flex>
             <Flex justify="space-between" align="center" mt={4}>
-              <Text fontWeight="bold" color={textColor}>Quantity</Text>
-              <Input 
-                size="sm" 
-                w="80px" 
-                type="number" 
+              <Text fontWeight="bold" color={textColor}>
+                Quantity
+              </Text>
+              <Input
+                size="sm"
+                w="80px"
+                type="number"
                 min="1"
                 value={quantity}
                 onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                bg={useColorModeValue("gray.100", "gray.600")} 
+                bg={useColorModeValue("gray.100", "gray.600")}
               />
             </Flex>
           </Box>
@@ -405,7 +500,9 @@ const CheckoutPage = () => {
 
           {/* Total */}
           <Flex justify="space-between" align="center" mb={6}>
-            <Text fontSize="lg" fontWeight="bold" color={textColor}>Total Amount</Text>
+            <Text fontSize="lg" fontWeight="bold" color={textColor}>
+              Total Amount
+            </Text>
             <HStack>
               <Text fontSize="md" fontWeight="medium" color="green.400">
                 Payment Due
@@ -421,9 +518,9 @@ const CheckoutPage = () => {
             <Text fontSize="lg" fontWeight="semibold" mb={3} color={textColor}>
               Payment Method
             </Text>
-            
-            <RadioGroup 
-              onChange={setPaymentMethod} 
+
+            <RadioGroup
+              onChange={setPaymentMethod}
               value={paymentMethod}
               colorScheme="purple"
             >
@@ -436,7 +533,7 @@ const CheckoutPage = () => {
                     </Text>
                   </VStack>
                 </Radio>
-                
+
                 <Radio value="cod">
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="medium">Cash on Delivery (COD)</Text>
@@ -447,12 +544,11 @@ const CheckoutPage = () => {
                 </Radio>
               </Stack>
             </RadioGroup>
-            
+
             {/* Payment method-specific information */}
             {paymentMethod === "cod" && (
               <Alert status="info" mt={3} borderRadius="md" fontSize="sm">
-                <AlertIcon />
-                A 2% processing fee will be added to COD orders.
+                <AlertIcon />A 2% processing fee will be added to COD orders.
               </Alert>
             )}
           </Box>
@@ -461,18 +557,20 @@ const CheckoutPage = () => {
 
           {/* Actions */}
           <HStack spacing={4}>
-            <Button 
-              colorScheme="purple" 
+            <Button
+              colorScheme="purple"
               flex={1}
               onClick={handleSubmit}
               isLoading={isLoading}
-              loadingText={paymentMethod === "payhere" ? "Processing..." : "Placing Order"}
+              loadingText={
+                paymentMethod === "payhere" ? "Processing..." : "Placing Order"
+              }
             >
               {paymentMethod === "payhere" ? "Pay Now" : "Place COD Order"}
             </Button>
-            <Button 
-              variant="outline" 
-              colorScheme="gray" 
+            <Button
+              variant="outline"
+              colorScheme="gray"
               flex={1}
               onClick={() => navigate(-1)}
             >

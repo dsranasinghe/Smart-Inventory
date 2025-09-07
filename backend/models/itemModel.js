@@ -15,7 +15,11 @@ const itemSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
-  category: { type: String, required: false },
+ category: {
+    type: String,
+    enum: ['Dairy', 'Vegetables','Snacks', 'Beverages', 'Bakery', 'Meat'], 
+    required: true
+  },
   deliveryType: {
     type: String,
     enum: ["Standard", "Express", "Overnight"],

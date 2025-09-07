@@ -12,7 +12,7 @@ export const addItem = async (req, res) => {
   });
   try {
     const { userId } = req.params;
-    const { name, description, unitPrice, deliveryType, inStock } = req.body;
+    const { name, description, unitPrice, deliveryType, inStock , category } = req.body;
 
     // Find supplier by userId
     const supplier = await Supplier.findOne({ user: userId });
@@ -25,6 +25,7 @@ export const addItem = async (req, res) => {
       name,
       description,
       unitPrice,
+      category,
       deliveryType,
       inStock,
       supplier: supplier._id
