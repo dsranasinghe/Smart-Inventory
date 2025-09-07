@@ -16,9 +16,11 @@ const itemSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
-  category: { 
-    type: String, 
-    required: false 
+
+ category: {
+    type: String,
+    enum: ['Dairy', 'Vegetables','Snacks', 'Beverages', 'Bakery', 'Meat'], 
+    required: true
   },
   currentStock: { // ADD THIS FIELD
     type: Number,
@@ -28,6 +30,7 @@ const itemSchema = new mongoose.Schema({
   minimumStock: { // ADD THIS FIELD
     type: Number,
     default: 10
+
   },
   deliveryType: {
     type: String,

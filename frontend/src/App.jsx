@@ -26,11 +26,11 @@ function App() {
       
       <Routes>
         <Route path="/" element={<Home />} /> 
-       <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/inventoryadd" element={<InventoryAdd />} />
-        <Route path="/users " element={<UserProfile />} />  {/*change it when you add more users  /:userId */}
+        <Route path="/users" element={<UserProfile />} />  {/*change it when you add more users  /:userId */}
         <Route path="/manager" element={<ManagerDashboard />} />
         <Route path="/staff" element={<StaffDashboard />} />
         <Route path="/suppliers" element={<SupplierList />} />
