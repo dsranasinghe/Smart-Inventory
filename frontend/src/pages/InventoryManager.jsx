@@ -61,6 +61,7 @@ export default function InventoryView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [expirationFilter, setExpirationFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
 
   // Fetch inventory data from API
   useEffect(() => {
@@ -68,6 +69,10 @@ export default function InventoryView() {
       try {
         const response = await axios.get("http://localhost:5000/api/inventory");
         setInventoryItems(response.data);
+        
+        // Log categories to debug
+        const categories = [...new Set(response.data.map(item => item.category))];
+        console.log("Available categories in database:", categories);
       } catch (err) {
         setError(err.message);
         toast({
@@ -133,8 +138,11 @@ export default function InventoryView() {
     const matchesDate =
       !expirationFilter ||
       item.expirationDate?.startsWith(expirationFilter);
+      
+    const matchesCategory = categoryFilter === "All" || 
+                            item.category.toLowerCase() === categoryFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus && matchesDate && matchesCategory;
   });
 
   if (loading) {
@@ -164,7 +172,10 @@ export default function InventoryView() {
       <Sidebar />
       <Box p={6} flex={1}>
         {/* Header Buttons */}
-        <InventoryHeader />
+        <InventoryHeader 
+          selectedCategory={categoryFilter} 
+          onCategoryChange={setCategoryFilter} 
+        />
 
         {/* Filters */}
         <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={4}>
@@ -189,35 +200,43 @@ export default function InventoryView() {
               </Tr>
             </Thead>
             <Tbody>
-              {filteredItems.map((item) => {
-                const status = getStatus(item.stockLevel, item.reorderThreshold);
-                const displayStatus = status;
+              {filteredItems.length > 0 ? (
+                filteredItems.map((item) => {
+                  const status = getStatus(item.stockLevel, item.reorderThreshold);
+                  const displayStatus = status;
 
-                return (
-                  <Tr key={item._id}>
-                    <Td>{item.name}</Td>
-                    <Td>{item.category}</Td>
-                    <Td>{item.supplier}</Td>
-                    <Td>{item.stockLevel}</Td>
-                    <Td>{item.reorderThreshold}</Td>
-                    <Td>{formatDate(item.expirationDate)}</Td>
-                    <Td>
-                      <Badge colorScheme={statusColors[displayStatus]}>
-                        {displayStatus}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      <IconButton
-                        icon={<DeleteIcon />}
-                        aria-label="Delete inventory"
-                        colorScheme="red"
-                        variant="ghost"
-                        onClick={() => handleDeleteClick(item._id)}
-                      />
-                    </Td>
-                  </Tr>
-                );
-              })}
+                  return (
+                    <Tr key={item._id}>
+                      <Td>{item.name}</Td>
+                      <Td>{item.category}</Td>
+                      <Td>{item.supplier}</Td>
+                      <Td>{item.stockLevel}</Td>
+                      <Td>{item.reorderThreshold}</Td>
+                      <Td>{formatDate(item.expirationDate)}</Td>
+                      <Td>
+                        <Badge colorScheme={statusColors[displayStatus]}>
+                          {displayStatus}
+                        </Badge>
+                      </Td>
+                      <Td>
+                        <IconButton
+                          icon={<DeleteIcon />}
+                          aria-label="Delete inventory"
+                          colorScheme="red"
+                          variant="ghost"
+                          onClick={() => handleDeleteClick(item._id)}
+                        />
+                      </Td>
+                    </Tr>
+                  );
+                })
+              ) : (
+                <Tr>
+                  <Td colSpan={8} textAlign="center">
+                    No inventory items found
+                  </Td>
+                </Tr>
+              )}
             </Tbody>
           </Table>
         </Box>
