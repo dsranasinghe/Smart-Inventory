@@ -91,13 +91,13 @@ const Dashboard = () => {
           console.error("Dashboard data error:", error);
           return { data: null };
         }),
-        axios.get("http://localhost:5000/api/items/low-stock", {
+        axios.get("http://localhost:5000/api", {
           headers: { Authorization: `Bearer ${token}` }
         }).catch(error => {
           console.error("Low stock items error:", error);
           return { data: [] };
         }),
-        axios.get("http://localhost:5000/api/orders/recent", {
+        axios.get("http://localhost:5000/api/orders?limit=5", {
           headers: { Authorization: `Bearer ${token}` }
         }).catch(error => {
           console.error("Recent orders error:", error);

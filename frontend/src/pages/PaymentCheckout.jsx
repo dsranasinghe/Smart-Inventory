@@ -21,11 +21,13 @@ import {
 } from "@chakra-ui/react";
 import Sidebar from "../components/sidebar";
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 const CheckoutPage = () => {
   const { orderId } = useParams();
+  const location = useLocation();
+  const supplierName = location.state?.supplierName || "Unknown Supplier";
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -62,10 +64,6 @@ const CheckoutPage = () => {
         }
 
         setOrder(orderRes.data);
-
-        // Check the structure of the supplier data in the order response
-        console.log("Order data:", orderRes.data);
-        console.log("Supplier data in order:", orderRes.data.supplier);
 
         // Handle different supplier data structures
         if (orderRes.data.supplier) {
@@ -196,6 +194,7 @@ const CheckoutPage = () => {
     }
   };
 
+
   // REAL PayHere payment handler
   const handlePayHerePayment = async () => {
     try {
@@ -204,26 +203,18 @@ const CheckoutPage = () => {
         localStorage.getItem("user") || localStorage.getItem("users");
       const user = userData ? JSON.parse(userData) : null;
 
-      if (!order) {
-        throw new Error("Order data not available");
-      }
-
-      // Check if payhere is loaded
-      if (typeof window.payhere === "undefined") {
+      if (!order) throw new Error("Order data not available");
+      if (typeof window.payhere === "undefined")
         throw new Error(
           "PayHere payment gateway not loaded. Please refresh the page."
         );
-      }
 
       const supplierContact = getSupplierContact();
 
       // 1. Get payment hash from backend
       const response = await axios.post(
         "http://localhost:5000/api/payments/generate-hash",
-        {
-          order_id: order.orderNumber,
-          amount: total,
-        },
+        { order_id: order.orderNumber, amount: total },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -232,14 +223,12 @@ const CheckoutPage = () => {
         }
       );
 
-      // Check if hash was generated successfully
-      if (!response.data.hash) {
+      if (!response.data.hash)
         throw new Error("Failed to generate payment hash");
-      }
 
       const { hash, merchantId, amount, currency } = response.data;
 
-      // 2. Create payment object
+      // 2. Create payment object for PayHere
       const payment = {
         sandbox: true,
         merchant_id: merchantId,
@@ -248,11 +237,9 @@ const CheckoutPage = () => {
         notify_url: "http://localhost:5000/api/payments/notify",
         order_id: order.orderNumber,
         items: `Payment for Order ${order.orderNumber}`,
-        amount: amount,
-        currency: currency,
-        hash: hash,
-
-        // Use username if first_name is not available
+        amount,
+        currency,
+        hash,
         first_name: user?.first_name || user?.username || "Customer",
         last_name: user?.last_name || " ",
         email: user?.email || "customer@example.com",
@@ -260,23 +247,71 @@ const CheckoutPage = () => {
         address: supplierContact.address,
         city: "Colombo",
         country: "Sri Lanka",
-
         custom_1: user?._id || "manager_id",
         custom_2: order.supplier?._id || order.supplier,
       };
 
-      // 3. Set up payment handlers
-      window.payhere.onCompleted = function (onCompletedOrderId) {
-        console.log("Payment completed. OrderID:", onCompletedOrderId);
-        toast({
-          title: "Payment Successful",
-          description: "Your payment has been processed successfully.",
-          status: "success",
-          duration: 5000,
-          isClosable: true,
-        });
-        navigate("/payment-success");
-      };
+      // 3. Set up PayHere callbacks
+     window.payhere.onCompleted = async function (onCompletedOrderId) {
+  console.log("Payment completed. OrderID:", onCompletedOrderId);
+
+  const supplierId =
+    typeof order.supplier.user === "string"
+      ? order.supplier.user
+      : order.supplier._id;
+
+  console.log("Order ID:", order._id);
+  console.log("Supplier ID:", supplierId);
+  console.log("Manager ID:", user?._id);
+  console.log("Total amount:", total);
+
+  if (!user?._id) {
+    toast({
+      title: "Error",
+      description: "Manager ID not found. Cannot save payment.",
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+    return;
+  }
+
+  try {
+    await axios.post(
+      "http://localhost:5000/api/payments/manual",
+      {
+        order_id: order._id,
+        payment_id: "PH_" + new Date().getTime(),
+        amount: Number(total),
+        currency: "LKR",
+        supplier_id: supplierId,
+        manager_id: user._id,
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    toast({
+      title: "Payment Successful",
+      description: "Your payment has been recorded successfully.",
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+  } catch (err) {
+    console.error("Failed to save payment manually:", err);
+    toast({
+      title: "Payment Save Failed",
+      description:
+        "Payment completed but could not be recorded. Contact support.",
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+
+  navigate("/payment-success");
+};
+
 
       window.payhere.onDismissed = function () {
         console.log("Payment dismissed");
@@ -302,7 +337,7 @@ const CheckoutPage = () => {
         });
       };
 
-      // 4. Start payment
+      // 4. Start PayHere payment
       window.payhere.startPayment(payment);
     } catch (error) {
       console.error("Payment initiation failed:", error);
