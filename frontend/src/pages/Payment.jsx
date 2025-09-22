@@ -28,7 +28,7 @@ const PaymentPage = () => {
 
   const cardBg = useColorModeValue("white", "gray.700");
 
-  // ✅ Extract fetch logic into a reusable function
+  // Extract fetch logic into a reusable function
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
@@ -59,7 +59,7 @@ const PaymentPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // ✅ Format currency for LKR
+  //  Format currency for LKR
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-LK", {
       style: "currency",
@@ -67,7 +67,7 @@ const PaymentPage = () => {
       minimumFractionDigits: 2,
     }).format(amount || 0);
 
-  // ✅ Format date
+  // Format date
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -75,8 +75,8 @@ const PaymentPage = () => {
       day: "numeric",
     });
 
-  const handlePayment = (orderId) => {
-    navigate(`/payment/checkout/${orderId}`);
+  const handlePayment = (orderId, supplierName) => {
+    navigate(`/payment/checkout/${orderId}`, { state: { supplierName } });
   };
 
   return (
@@ -88,7 +88,7 @@ const PaymentPage = () => {
             Supplier Payments
           </Text>
           <Button size="sm" colorScheme="blue" onClick={fetchOrders}>
-            Refresh 
+            Refresh
           </Button>
         </Flex>
 
@@ -105,7 +105,6 @@ const PaymentPage = () => {
                   <Th>Supplier</Th>
                   <Th>Order Date</Th>
                   <Th>Total Amount</Th>
-                  <Th>Payment Due Date</Th>
                   <Th>Payment Status</Th>
                   <Th textAlign="center">Actions</Th>
                 </Tr>
@@ -114,21 +113,23 @@ const PaymentPage = () => {
                 {orders.map((order) => (
                   <Tr key={order._id}>
                     <Td>{order.orderNumber}</Td>
-                    <Td>{order.supplier?.user?.username || "Unknown Supplier"}</Td>
+                    <Td>
+                      {order.supplier?.user?.username || "Unknown Supplier"}
+                    </Td>
                     <Td>{formatDate(order.orderDate)}</Td>
                     <Td>{formatCurrency(order.orderTotal)}</Td>
-                    <Td>
-                      {order.paymentDueDate
-                        ? formatDate(order.paymentDueDate)
-                        : "N/A"}
-                    </Td>
                     <Td>
                       <Badge colorScheme="orange">{order.paymentStatus}</Badge>
                     </Td>
                     <Td textAlign="center">
                       <Button
                         colorScheme="purple"
-                        onClick={() => handlePayment(order._id)}
+                        onClick={() =>
+                          handlePayment(
+                            order._id,
+                            order.supplier?.user?.username || "Unknown Supplier"
+                          )
+                        }
                         size="sm"
                       >
                         Pay Now
