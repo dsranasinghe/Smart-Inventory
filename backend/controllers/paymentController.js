@@ -1,168 +1,147 @@
-import crypto from 'crypto';
+// paymentController.js
+import Order from '../models/orderModel.js';
 import Payment from '../models/payment.js';
-import Order from '../models/orderModel.js'; 
-import Supplier from '../models/supplierModel.js'; 
+import crypto from 'crypto';
 
-// Generate MD5 hash (helper function)
-const getMd5 = (input) => {
-  return crypto.createHash('md5').update(input).digest('hex').toUpperCase();
-};
-
-// Generate payment hash for frontend
+// Generate payment hash
 export const generatePaymentHash = async (req, res) => {
   try {
     const { order_id, amount } = req.body;
-    
+
     // Validate input
     if (!order_id || !amount) {
-      return res.status(400).json({ error: "Order ID and amount are required" });
+      return res.status(400).json({ error: 'Order ID and amount are required' });
     }
 
-    const merchantID = process.env.PAYHERE_MERCHANT_ID;
+    // Find the order to verify it exists
+    const order = await Order.findOne({ orderNumber: order_id });
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // PayHere merchant credentials
+    const merchantId = process.env.PAYHERE_MERCHANT_ID;
     const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
+    const currency = 'LKR';
     
-    const currency = "LKR";
+    // Ensure amount has exactly 2 decimal places
     const amountFormatted = parseFloat(amount).toFixed(2);
 
-    // Generate hash according to PayHere requirements
+    // Helper to generate MD5 hash
+    const getMd5 = (input) =>
+      crypto.createHash('md5').update(input).digest('hex').toUpperCase();
+
+    // Generate the hash
     const hash = getMd5(
-      merchantID +
-      order_id +
-      amountFormatted +
-      currency +
-      getMd5(merchantSecret)
+      merchantId + order_id + amountFormatted + currency + getMd5(merchantSecret)
     );
 
-    res.json({ 
-      orderId: order_id, 
-      hash: hash, 
+    res.json({
+      orderId: order_id,
+      hash,
       amount: amountFormatted,
-      merchantId: merchantID,
-      currency: currency
+      merchantId,
+      currency,
     });
-  } catch (err) {
-    console.error("Hash generation error:", err);
-    res.status(500).json({ error: "Error generating payment hash" });
+  } catch (error) {
+    console.error('Hash generation error:', error);
+    res.status(500).json({ error: 'Failed to generate payment hash' });
   }
 };
 
-// Handle PayHere server-to-server callbacks
+// Handle PayHere notification
 export const handlePaymentNotification = async (req, res) => {
   try {
-    const {
-      merchant_id,
-      order_id, // Your orderNumber: "ORD-1756660497833-248"
-      payment_id,
-      payhere_amount,
-      payhere_currency,
-      status_code,
-      md5sig,
-      custom_1, // manager_id
-      custom_2, // supplier_id
-      method,
-      status_message
-    } = req.body;
-
-    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
-
-    // Verify MD5 signature for security
-    const localMd5sig = getMd5(
-      `${merchant_id}${order_id}${payhere_amount}${payhere_currency}${status_code}${getMd5(merchantSecret)}`
-    );
-
-    if (localMd5sig !== md5sig) {
-      return res.status(400).json({ success: false, message: "Invalid MD5 signature" });
-    }
-
-    // Check if payment was successful (status_code 2 = success)
-    if (status_code !== "2") {
-      return res.status(400).json({ success: false, message: "Payment not successful" });
-    }
-
-    // Save successful payment to database
-    const paymentData = {
-      order_id,
-      payment_id,
-      amount: payhere_amount,
-      currency: payhere_currency,
-      status_code,
-      method,
-      status_message,
-      supplier_id: custom_2, // supplier ID from custom field
-      manager_id: custom_1, // manager ID from custom field
-      payment_date: new Date()
-    };
-
-    // Save payment record
-    const newPayment = await Payment.create(paymentData);
+    console.log('PayHere Notification Received:', req.body);
     
-    // Update order payment status (if you have this field)
-    await Order.findOneAndUpdate(
-      { orderNumber: order_id },
-      { 
-        paymentStatus: 'paid',
-        paymentDate: new Date()
-      }
-    );
+    const paymentData = req.body;
+    const { order_id, payment_id, status_code, ...otherData } = paymentData;
 
-    // Update supplier's payment status and balance
-    await Supplier.findByIdAndUpdate(
-      custom_2,
-      { 
-        $set: { payment_status: 'paid' },
-        $push: { 
-          orderHistory: {
-            order_id: order_id,
-            amount: payhere_amount,
-            payment_date: new Date(),
-            status: 'paid'
-          }
-        }
-      }
-    );
+    // Validate required fields
+    if (!order_id || !payment_id) {
+      console.error('Invalid notification data:', paymentData);
+      return res.status(400).send('Invalid notification data');
+    }
 
-    console.log("Payment processed successfully:", order_id);
-    res.json({ success: true });
+    // Find the order
+    const order = await Order.findOne({ orderNumber: order_id });
+    if (!order) {
+      console.error('Order not found:', order_id);
+      return res.status(404).send('Order not found');
+    }
 
-  } catch (err) {
-    console.error("Error processing payment notification:", err);
-    res.status(500).json({ success: false, message: "Error processing payment" });
+    console.log('📦 Order found:', order.orderNumber);
+
+    // Check for duplicate payments
+    const existingPayment = await Payment.findOne({ transactionId: payment_id });
+    if (existingPayment) {
+      console.log('Payment already exists:', payment_id);
+      return res.status(200).send('Payment already processed');
+    }
+
+  
+    let paymentStatus = 'Pending';
+    
+    if (status_code === '2') {
+      paymentStatus = 'Paid'; 
+    } else if (status_code === '0') {
+      paymentStatus = 'Pending'; 
+    } else {
+      paymentStatus = 'Failed'; 
+    }
+
+    // Create payment record 
+    const payment = new Payment({
+      orderId: order._id,
+      transactionId: payment_id, 
+      amount: parseFloat(paymentData.amount || order.orderTotal),
+      currency: paymentData.currency || 'LKR',
+      status: paymentStatus, 
+      payhereStatus: status_code, 
+      payhereData: paymentData,
+      paymentMethod: 'payhere',
+      supplier_id: order.supplier,
+      manager_id: order.manager,
+      payment_date: new Date()
+    });
+
+    // Save payment
+    await payment.save();
+    console.log('💾 Payment saved to database:', payment._id);
+
+    // Update order status
+    order.paymentStatus = paymentStatus; 
+    order.payments = order.payments || [];
+    order.payments.push(payment._id); 
+    
+    await order.save();
+    console.log('📝 Order updated:', order.orderNumber);
+
+    res.status(200).send('Notification processed successfully');
+
+  } catch (error) {
+    console.error('Payment notification error:', error);
+    res.status(500).send('Error processing payment notification');
   }
 };
-
-// Get payment history for a supplier
+// Get supplier payments
 export const getSupplierPayments = async (req, res) => {
   try {
     const { supplierId } = req.params;
     
-    const payments = await Payment.find({ supplier_id: supplierId })
-      .populate('manager_id', 'username email')
-      .sort({ payment_date: -1 });
+    const payments = await Payment.find()
+      .populate({
+        path: 'orderId',
+        match: { supplier: supplierId }
+      })
+      .sort({ paymentDate: -1 });
 
-    res.json(payments);
-  } catch (err) {
-    console.error("Error fetching payments:", err);
-    res.status(500).json({ error: "Error fetching payment history" });
-  }
-};
+    // Filter out payments where orderId is null (not matching the supplier)
+    const supplierPayments = payments.filter(payment => payment.orderId !== null);
 
-export const updatePaymentStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { paymentStatus } = req.body;
-    
-    const order = await Order.findByIdAndUpdate(
-      id,
-      { paymentStatus },
-      { new: true }
-    );
-    
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-    
-    res.json(order);
+    res.json(supplierPayments);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error fetching supplier payments:', error);
+    res.status(500).json({ error: 'Failed to fetch payments' });
   }
 };

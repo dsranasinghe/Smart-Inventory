@@ -3,51 +3,51 @@ import Order from '../models/orderModel.js';
 import Item from '../models/itemModel.js';
 import Payment from '../models/payment.js';
 import Supplier from '../models/supplierModel.js';
+import Inventory from '../models/Inventory.js';
 
 // Get dashboard overview data
 export const getDashboardData = async (req, res) => {
   try {
     // Get counts
-    const totalProducts = await Item.countDocuments();
-    const outOfStock = await Item.countDocuments({ currentStock: 0 });
-    const lowStockItems = await Item.countDocuments({ 
-      currentStock: { $gt: 0, $lt: 10 }
+    const totalProducts = await Inventory.countDocuments();
+
+    // Keep only low stock items
+   const lowStockItems = await Inventory.countDocuments({
+      $expr: {
+        $and: [
+          { $gt: ["$stockLevel", 0] },
+          { $lte: ["$stockLevel", "$reorderThreshold"] }
+        ]
+      }
     });
-    
     // Get distinct categories
-    const categories = await Item.distinct("category");
+    const categories = await Inventory.distinct("category");
     const totalCategories = categories.length;
 
     // Inventory overview for chart (by category)
-    const inventoryOverview = await Item.aggregate([
+    const inventoryOverview = await Inventory.aggregate([
       {
         $group: {
           _id: "$category",
-          stock: { $sum: "$currentStock" },
-          outOfStock: {
-            $sum: { $cond: [{ $eq: ["$currentStock", 0] }, 1, 0] }
-          }
+          stock: { $sum: "$stockLevel" }
         }
       },
       {
         $project: {
           name: "$_id",
           stock: 1,
-          outOfStock: 1,
           _id: 0
         }
       }
     ]);
 
-    // Order trends for chart (last 6 months)
+    // Order trends (same as before)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     const orderTrends = await Order.aggregate([
       {
-        $match: {
-          orderDate: { $gte: sixMonthsAgo }
-        }
+        $match: { orderDate: { $gte: sixMonthsAgo } }
       },
       {
         $group: {
@@ -58,15 +58,13 @@ export const getDashboardData = async (req, res) => {
           orders: { $sum: 1 }
         }
       },
-      {
-        $sort: { "_id.year": 1, "_id.month": 1 }
-      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
       {
         $project: {
           name: {
             $let: {
               vars: {
-                months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
               },
               in: {
                 $concat: [
@@ -83,35 +81,24 @@ export const getDashboardData = async (req, res) => {
       }
     ]);
 
-    // Get total pending payments
-    const pendingPayments = await Order.countDocuments({
-      paymentStatus: 'Pending'
-    });
+    // Pending payments
+    const pendingPayments = await Order.countDocuments({ paymentStatus: 'Pending' });
 
-    // Get total order value this month
+    // Monthly revenue
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
     const monthlyOrders = await Order.aggregate([
-      {
-        $match: {
-          orderDate: { $gte: startOfMonth }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: "$orderTotal" }
-        }
-      }
+      { $match: { orderDate: { $gte: startOfMonth } } },
+      { $group: { _id: null, totalAmount: { $sum: "$orderTotal" } } }
     ]);
 
     const monthlyRevenue = monthlyOrders.length > 0 ? monthlyOrders[0].totalAmount : 0;
 
+    // Send response without outOfStock
     res.json({
       totalProducts,
-      outOfStock,
       lowStockItems,
       totalCategories,
       pendingPayments,
@@ -126,15 +113,21 @@ export const getDashboardData = async (req, res) => {
   }
 };
 
+
 // Get low stock items
 export const getLowStockItems = async (req, res) => {
   try {
-    const lowStockItems = await Item.find({
-      currentStock: { $gt: 0, $lt: 10 }
+    const lowStockItems = await Inventory.find({
+      $expr: {
+        $and: [
+          { $gt: ["$stockLevel", 0] },
+          { $lte: ["$stockLevel", "$reorderThreshold"] }
+        ]
+      }
     })
-    .select('name currentStock minimumStock category')
-    .sort({ currentStock: 1 })
-    .limit(10);
+      .select("name stockLevel reorderThreshold category supplier")
+      .sort({ stockLevel: 1 })
+      .limit(10);
 
     res.json(lowStockItems);
   } catch (error) {

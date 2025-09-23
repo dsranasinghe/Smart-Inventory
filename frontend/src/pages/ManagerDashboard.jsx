@@ -48,14 +48,13 @@ import {
   ResponsiveContainer
 } from "recharts";
 import Sidebar from "../components/sidebar";
-import { useState, useEffect, useCallback } from "react"; // ADD useCallback
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"; // ADD useNavigate if needed
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
-  // ALL HOOKS MUST BE AT THE TOP LEVEL - NO CONDITIONAL HOOKS
   const { colorMode, toggleColorMode } = useColorMode();
-  const navigate = useNavigate(); // ADDED
+  const navigate = useNavigate();
   const bgColor = useColorModeValue("gray.100", "gray.900");
   const cardBgColor = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
@@ -67,7 +66,6 @@ const Dashboard = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
-  // Fetch dashboard data using useCallback to avoid infinite re-renders
   const fetchDashboardData = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -83,7 +81,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Fetch all dashboard data with proper error handling
       const [dashboardRes, lowStockRes, ordersRes, transactionsRes] = await Promise.all([
         axios.get("http://localhost:5000/api/dashboard", {
           headers: { Authorization: `Bearer ${token}` }
@@ -91,13 +88,13 @@ const Dashboard = () => {
           console.error("Dashboard data error:", error);
           return { data: null };
         }),
-        axios.get("http://localhost:5000/api/items/low-stock", {
+        axios.get("http://localhost:5000/api/dashboard/low-stocks", {
           headers: { Authorization: `Bearer ${token}` }
         }).catch(error => {
           console.error("Low stock items error:", error);
           return { data: [] };
         }),
-        axios.get("http://localhost:5000/api/orders/recent", {
+        axios.get("http://localhost:5000/api/orders?limit=5", {
           headers: { Authorization: `Bearer ${token}` }
         }).catch(error => {
           console.error("Recent orders error:", error);
@@ -128,17 +125,16 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, navigate]); // ADD dependencies
+  }, [toast, navigate]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]); // Now fetchDashboardData is stable
+  }, [fetchDashboardData]);
 
   const handleOrderNow = (itemId) => {
     navigate(`/orders/new?item=${itemId}`);
   };
 
-  // Process data for charts
   const inventoryChartData = dashboardData?.inventoryOverview || [];
   const ordersChartData = dashboardData?.orderTrends || [];
 
@@ -148,12 +144,6 @@ const Dashboard = () => {
       label: "Total Products",
       value: dashboardData?.totalProducts || 0,
       color: "green.500",
-    },
-    {
-      icon: FaShoppingCart,
-      label: "Out of Stock",
-      value: dashboardData?.outOfStock || 0,
-      color: "red.500",
     },
     {
       icon: FaExclamationTriangle,
@@ -175,7 +165,7 @@ const Dashboard = () => {
     },
     {
       icon: FaChartLine,
-      label: "Monthly Revenue",
+      label: "Monthly Expenses",
       value: `Rs ${(dashboardData?.monthlyRevenue || 0).toLocaleString()}`,
       color: "purple.500",
     },
@@ -194,12 +184,8 @@ const Dashboard = () => {
 
   return (
     <Flex bg={bgColor} minH="100vh" p={4}>
-      {/* Sidebar */}
       <Sidebar />
-
-      {/* Main Content */}
       <VStack flex={1} p={6} spacing={6}>
-        {/* Top Bar */}
         <Flex w="full" justify="space-between" align="center">
           <HStack spacing={4}>
             <Text fontSize="xl" fontWeight="bold" color={textColor}>
@@ -219,7 +205,6 @@ const Dashboard = () => {
           </HStack>
         </Flex>
 
-        {/* Stats */}
         <Flex w="full" justify="space-between" gap={6} flexWrap="wrap">
           {stats.map((stat, index) => (
             <VStack
@@ -243,9 +228,7 @@ const Dashboard = () => {
           ))}
         </Flex>
         
-        {/* Charts */}
         <Flex w="full" gap={6} flexDirection={{ base: "column", lg: "row" }}>
-          {/* Bar Chart - Inventory */}
           <Box
             bg={cardBgColor}
             p={6}
@@ -265,12 +248,10 @@ const Dashboard = () => {
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="stock" fill="#8884d8" />
-                <Bar dataKey="outOfStock" fill="#82ca9d" />
               </BarChart>
             </ResponsiveContainer>
           </Box>
 
-          {/* Line Chart - Orders */}
           <Box
             bg={cardBgColor}
             p={6}
@@ -295,50 +276,8 @@ const Dashboard = () => {
           </Box>
         </Flex>
 
-        {/* Inventory & Orders */}
         <Flex w="full" gap={6} flexDirection={{ base: "column", lg: "row" }}>
-          {/* Low Stock Items */}
-          <Box
-            bg={cardBgColor}
-            p={6}
-            rounded="md"
-            boxShadow="md"
-            flex="1"
-          >
-            <Text fontSize="lg" fontWeight="bold" color={textColor}>
-              Low Stock Items
-            </Text>
-            {lowStockItems.length > 0 ? (
-              <>
-                <Alert status="warning" mt={2} borderRadius="md">
-                  <AlertIcon />
-                  These items are low on stock, please order now!
-                </Alert>
-                <Divider my={4} />
-                {lowStockItems.slice(0, 5).map((item, index) => (
-                  <Flex key={index} w="full" justify="space-between" align="center" my={2}>
-                    <VStack align="start" spacing={0}>
-                      <Text color={textColor}>{item.name}</Text>
-                      <Text fontSize="sm" color="gray.500">
-                        Current stock: {item.currentStock}
-                      </Text>
-                    </VStack>
-                    <Button 
-                      size="sm" 
-                      colorScheme="blue"
-                      onClick={() => handleOrderNow(item._id)}
-                    >
-                      Order now
-                    </Button>
-                  </Flex>
-                ))}
-              </>
-            ) : (
-              <Text color="gray.500" mt={4}>No low stock items</Text>
-            )}
-          </Box>
-
-          {/* Recent Orders */}
+        
           <Box
             bg={cardBgColor}
             p={6}
@@ -378,7 +317,6 @@ const Dashboard = () => {
           </Box>
         </Flex>
 
-        {/* Recent Transactions */}
         <Box
           bg={cardBgColor}
           p={6}

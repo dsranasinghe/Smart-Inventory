@@ -29,66 +29,67 @@ const Login = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch('http://localhost:5000/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || 'Login failed');
-      }
-
-      const data = await response.json();
-
-      // Save the token to localStorage
-      localStorage.setItem('token', data.token);
-
-      // Save user data in context
-      login(data.user);
-
-      // Redirect based on role
-      switch (data.user.role) {
-        case 'admin':
-          navigate('/admin');
-          break;
-        case 'manager':
-          navigate('/manager');
-          break;
-        case 'staff':
-          navigate('/staff');
-          break;
-        case 'supplier':
-  navigate(`/supplier/${data.user.id}`); 
-  break;
-
-        default:
-          navigate('/');
-      }
-
-      // Show success toast
-      toast({
-        title: 'Login Successful',
-        description: 'You have been logged in successfully.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message || 'An error occurred. Please try again.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      console.error('Error:', error);
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(errorData || 'Login failed');
     }
-  };
+
+    const data = await response.json();
+
+    // Save to localStorage for CheckoutPage
+    localStorage.setItem('currentUser', JSON.stringify(data.user));
+    localStorage.setItem('token', data.token);
+
+    // Save user in context
+    login(data.user);
+
+    // Redirect based on role
+    switch (data.user.role) {
+      case 'admin':
+        navigate('/admin');
+        break;
+      case 'manager':
+        navigate('/manager');
+        break;
+      case 'staff':
+        navigate('/staff');
+        break;
+      case 'supplier':
+        navigate(`/supplier/${data.user.id}`); 
+        break;
+      default:
+        navigate('/');
+    }
+
+    // Show success toast
+    toast({
+      title: 'Login Successful',
+      description: 'You have been logged in successfully.',
+      status: 'success',
+      duration: 5000,
+      isClosable: true,
+    });
+  } catch (error) {
+    toast({
+      title: 'Error',
+      description: error.message || 'An error occurred. Please try again.',
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+    console.error('Error:', error);
+  }
+};
+
 
   return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bg="#f3e8ff">

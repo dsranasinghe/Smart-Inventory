@@ -40,12 +40,16 @@ const orderSchema = new mongoose.Schema({
     enum: ['Processing', 'Shipped', 'Delivered', 'Cancelled'],
     default: 'Processing'
   },
-    paymentStatus: {
+  paymentStatus: {
     type: String,
     enum: ['Pending', 'Paid', 'Failed'],
     default: 'Pending'
   },
- 
+  
+  payments: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment'
+  }],
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier',
@@ -82,7 +86,7 @@ orderSchema.pre('save', function(next) {
       return total + (item.unitPriceAtOrder * item.quantity);
     }, 0);
   }
-  // ADD THIS: Generate trackingId if not provided
+  
   if (!this.trackingId) {
     this.trackingId = `TRK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   }

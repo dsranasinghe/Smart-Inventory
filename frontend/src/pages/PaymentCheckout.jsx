@@ -4,11 +4,9 @@ import {
   Text,
   VStack,
   HStack,
-  Badge,
   Divider,
   Button,
   useColorModeValue,
-  Spacer,
   Tag,
   Input,
   RadioGroup,
@@ -21,100 +19,100 @@ import {
 } from "@chakra-ui/react";
 import Sidebar from "../components/sidebar";
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 const CheckoutPage = () => {
   const { orderId } = useParams();
+  const location = useLocation();
+  const supplierName = location.state?.supplierName || "Unknown Supplier";
   const navigate = useNavigate();
   const toast = useToast();
 
+  // 🎨 Colors
   const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
   const secondaryColor = useColorModeValue("gray.500", "gray.300");
+  const inputBg = useColorModeValue("gray.100", "gray.600");
 
-  // State management
+  // 📌 State
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("payhere");
   const [isLoading, setIsLoading] = useState(false);
   const [order, setOrder] = useState(null);
-  const [supplier, setSupplier] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [user, setUser] = useState(null);
 
-  // Fix the order data fetching in useEffect
+  // 📌 Get user data from localStorage on component mount
+  useEffect(() => {
+    const getUserData = () => {
+      try {
+        // Try all possible storage keys used in your app
+        const userData = 
+          localStorage.getItem("currentUser") || 
+          localStorage.getItem("user") || 
+          localStorage.getItem("users");
+        
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          console.log("User data loaded:", parsedUser);
+        } else {
+          console.warn("No user data found in localStorage");
+          // Redirect to login if no user data found
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to continue with payment",
+            status: "warning",
+            duration: 3000,
+            isClosable: true,
+          });
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load user information",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+        navigate("/login");
+      }
+    };
+
+    getUserData();
+  }, [navigate, toast]);
+
+  // 📌 Fetch order details
   useEffect(() => {
     const fetchOrderData = async () => {
+      // Don't fetch order data if user is not authenticated
+      if (!user) return;
+
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          throw new Error("No authentication token found");
+          toast({
+            title: "Authentication Error",
+            description: "Please log in to continue",
+            status: "error",
+            duration: 5000,
+            isClosable: true,
+          });
+          navigate("/login");
+          return;
         }
 
         const orderRes = await axios.get(
           `http://localhost:5000/api/orders/${orderId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        if (!orderRes.data) {
-          throw new Error("No order data returned from API");
-        }
+        if (!orderRes.data) throw new Error("No order data returned from API");
 
         setOrder(orderRes.data);
-
-        // Check the structure of the supplier data in the order response
-        console.log("Order data:", orderRes.data);
-        console.log("Supplier data in order:", orderRes.data.supplier);
-
-        // Handle different supplier data structures
-        if (orderRes.data.supplier) {
-          // Case 1: Supplier is an embedded object with user data
-          if (
-            orderRes.data.supplier.user &&
-            orderRes.data.supplier.user.username
-          ) {
-            setSupplier(orderRes.data.supplier);
-          }
-          // Case 2: Supplier is just an ID string, need to fetch details
-          else if (typeof orderRes.data.supplier === "string") {
-            try {
-              const supplierRes = await axios.get(
-                `http://localhost:5000/api/suppliers/${orderRes.data.supplier}`,
-                {
-                  headers: { Authorization: `Bearer ${token}` },
-                }
-              );
-              setSupplier(supplierRes.data);
-            } catch (supplierError) {
-              console.warn("Failed to fetch supplier details:", supplierError);
-              // Fallback: create a minimal supplier object
-              setSupplier({
-                username: "Unknown Supplier",
-                _id: orderRes.data.supplier,
-              });
-            }
-          }
-          // Case 3: Supplier is already a full object but with different structure
-          else if (
-            orderRes.data.supplier.username ||
-            orderRes.data.supplier.name
-          ) {
-            setSupplier(orderRes.data.supplier);
-          } else {
-            console.warn(
-              "Unexpected supplier data structure:",
-              orderRes.data.supplier
-            );
-            setSupplier({
-              username: "Unknown Supplier",
-              ...orderRes.data.supplier,
-            });
-          }
-        } else {
-          console.warn("No supplier data found in order");
-          setSupplier({ username: "Unknown Supplier" });
-        }
       } catch (error) {
         console.error("Error fetching order data:", error);
         toast({
@@ -130,9 +128,9 @@ const CheckoutPage = () => {
       }
     };
 
-    if (orderId) {
+    if (orderId && user) {
       fetchOrderData();
-    } else {
+    } else if (!orderId) {
       toast({
         title: "Error",
         description: "No order ID provided",
@@ -142,56 +140,69 @@ const CheckoutPage = () => {
       });
       setLoadingData(false);
     }
-  }, [orderId, toast]);
+  }, [orderId, toast, navigate, user]);
 
-  // Helper function to get supplier name
-  const getSupplierName = () => {
-    if (!order?.supplier) return "Unknown Supplier";
-    return (
-      order.supplier.user?.username ||
-      order.supplier.username ||
-      order.supplier.name ||
-      order.supplier.businessName ||
-      "Unknown Supplier"
-    );
-  };
-
-  // Helper function to get supplier contact info
+  // 🎯 Get supplier contact information
   const getSupplierContact = () => {
-    if (!order?.supplier) return {};
-
+    // You need to implement this based on your data structure
+    // This is a placeholder - adjust according to your actual data
+    if (order?.supplier) {
+      return {
+        phone: order.supplier.phone || "0000000000",
+        address: order.supplier.address || "No address provided"
+      };
+    }
+    
+    // Fallback to user data if supplier data isn't available
     return {
-      phone: order.supplier.user?.phone || order.supplier.phone || "0771234567",
-      address:
-        order.supplier.user?.address || order.supplier.address || "Colombo",
-      email:
-        order.supplier.user?.email ||
-        order.supplier.email ||
-        "supplier@example.com",
+      phone: user?.phone || "0771234567", // Default Sri Lankan number
+      address: user?.address || "Colombo, Sri Lanka"
     };
   };
-  // Calculate totals based on actual order data
-  const subtotal = order ? order.orderTotal : 0;
-  const total = subtotal * quantity;
 
-  // Handle payment submission
+  // 🎯 Handle form submission
   const handleSubmit = async () => {
-    setIsLoading(true);
-
-    try {
-      if (paymentMethod === "payhere") {
-        await handlePayHerePayment();
-      } else if (paymentMethod === "cod") {
-        await handleCODOrder();
-      }
-    } catch (error) {
+    if (!user) {
       toast({
-        title: "Payment Error",
-        description: "Failed to process payment. Please try again.",
+        title: "Authentication Required",
+        description: "Please log in to make a payment",
         status: "error",
         duration: 5000,
         isClosable: true,
       });
+      navigate("/login");
+      return;
+    }
+
+    if (!order) {
+      toast({
+        title: "Error",
+        description: "Order data not available",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (quantity < 1) {
+      toast({
+        title: "Invalid Quantity",
+        description: "Quantity must be at least 1",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Use the existing PayHere payment handler
+      await handlePayHerePayment();
+    } catch (error) {
+      console.error("Payment submission failed:", error);
       setIsLoading(false);
     }
   };
@@ -200,9 +211,10 @@ const CheckoutPage = () => {
   const handlePayHerePayment = async () => {
     try {
       const token = localStorage.getItem("token");
-      const userData =
-        localStorage.getItem("user") || localStorage.getItem("users");
-      const user = userData ? JSON.parse(userData) : null;
+      
+      if (!user) {
+        throw new Error("User information not found. Please log in again.");
+      }
 
       if (!order) {
         throw new Error("Order data not available");
@@ -216,13 +228,13 @@ const CheckoutPage = () => {
       }
 
       const supplierContact = getSupplierContact();
-
+      
       // 1. Get payment hash from backend
       const response = await axios.post(
         "http://localhost:5000/api/payments/generate-hash",
-        {
-          order_id: order.orderNumber,
-          amount: total,
+        { 
+          order_id: order.orderNumber, 
+          amount: total 
         },
         {
           headers: {
@@ -239,20 +251,18 @@ const CheckoutPage = () => {
 
       const { hash, merchantId, amount, currency } = response.data;
 
-      // 2. Create payment object
+      // 2. Create payment object with safe fallbacks
       const payment = {
         sandbox: true,
         merchant_id: merchantId,
         return_url: `${window.location.origin}/payment-success`,
         cancel_url: `${window.location.origin}/payment-cancel`,
-        notify_url: "http://localhost:5000/api/payments/notify",
+        notify_url: "https://0987c8e7dd8b.ngrok-free.app/api/payments/notify",
         order_id: order.orderNumber,
         items: `Payment for Order ${order.orderNumber}`,
         amount: amount,
         currency: currency,
         hash: hash,
-
-        // Use username if first_name is not available
         first_name: user?.first_name || user?.username || "Customer",
         last_name: user?.last_name || " ",
         email: user?.email || "customer@example.com",
@@ -260,14 +270,16 @@ const CheckoutPage = () => {
         address: supplierContact.address,
         city: "Colombo",
         country: "Sri Lanka",
-
-        custom_1: user?._id || "manager_id",
-        custom_2: order.supplier?._id || order.supplier,
+        custom_1: user?._id || user?.id || "user_id",
+        custom_2: order.supplier?._id || order.supplier?.id || order.supplier || "supplier_id",
       };
+
+      console.log("Payment object:", payment);
 
       // 3. Set up payment handlers
       window.payhere.onCompleted = function (onCompletedOrderId) {
         console.log("Payment completed. OrderID:", onCompletedOrderId);
+        setIsLoading(false);
         toast({
           title: "Payment Successful",
           description: "Your payment has been processed successfully.",
@@ -304,6 +316,7 @@ const CheckoutPage = () => {
 
       // 4. Start payment
       window.payhere.startPayment(payment);
+
     } catch (error) {
       console.error("Payment initiation failed:", error);
       setIsLoading(false);
@@ -318,71 +331,39 @@ const CheckoutPage = () => {
     }
   };
 
-  // COD order handler
-  const handleCODOrder = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        `http://localhost:5000/api/orders/${orderId}/cod`,
-        { quantity },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+  // 🎯 Calculate totals safely
+  const subtotal = order ? (order.orderTotal || 0) : 0;
+  const total = subtotal * quantity;
 
-      toast({
-        title: "COD Order Placed",
-        description:
-          "Your Cash on Delivery order has been placed successfully.",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-      navigate("/orders");
-    } catch (error) {
-      console.error("COD order failed:", error);
-      toast({
-        title: "Order Failed",
-        description: "Failed to place COD order. Please try again.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (loadingData) {
+  // Show loading if still checking authentication or fetching data
+  if (loadingData || !user) {
     return (
       <Flex>
         <Sidebar />
         <Box
-          p={8}
           flex={1}
+          p={8}
           display="flex"
           alignItems="center"
           justifyContent="center"
         >
           <VStack spacing={4}>
-            <Spinner
-              size="xl"
-              thickness="4px"
-              speed="0.65s"
-              color="purple.500"
-            />
-            <Text color={textColor}>Loading order details...</Text>
+            <Spinner size="xl" color="purple.500" />
+            <Text color={textColor}>
+              {!user ? "Checking authentication..." : "Loading order details..."}
+            </Text>
           </VStack>
         </Box>
       </Flex>
     );
   }
 
+  // No order found
   if (!order) {
     return (
       <Flex>
         <Sidebar />
-        <Box p={8} flex={1}>
+        <Box flex={1} p={8}>
           <Alert status="error" borderRadius="md">
             <AlertIcon />
             <VStack align="start" spacing={0}>
@@ -404,10 +385,10 @@ const CheckoutPage = () => {
     );
   }
 
+  // Main UI
   return (
     <Flex>
       <Sidebar />
-
       <Box p={8} flex={1}>
         {/* Header */}
         <VStack align="start" spacing={1} mb={6}>
@@ -419,54 +400,32 @@ const CheckoutPage = () => {
               Order: {order.orderNumber}
             </Text>
             <Tag size="md" colorScheme="purple">
-              @{getSupplierName()}
+              @{supplierName}
             </Tag>
           </HStack>
         </VStack>
 
         {/* Card */}
         <Box bg={cardBg} p={6} rounded="md" boxShadow="lg">
-          {/* User Details */}
+          {/* Order Info */}
           <HStack spacing={8} mb={4}>
             <Text fontWeight="medium" color={textColor}>
-              Order ID:{" "}
-              <span style={{ fontWeight: "bold" }}>{order.orderNumber}</span>
+              Order ID: <strong>{order.orderNumber}</strong>
             </Text>
             <Text fontWeight="medium" color={textColor}>
-              Supplier:{" "}
-              <span style={{ fontWeight: "bold" }}>{getSupplierName()}</span>
+              Supplier: <strong>{supplierName}</strong>
             </Text>
           </HStack>
 
-          {/* Order Info */}
           <Text color={secondaryColor} mb={4}>
             Order Date:{" "}
             <strong>{new Date(order.orderDate).toLocaleDateString()}</strong>
           </Text>
 
-          {/* Payment Note */}
           <Text fontSize="sm" color={textColor} mb={6}>
             Please complete the payment to process your order with{" "}
-            {getSupplierName()}.
+            {supplierName}.
           </Text>
-
-          {/* Order Summary */}
-          <Box mb={6}>
-            <Text fontSize="lg" fontWeight="semibold" mb={2} color={textColor}>
-              Order Summary
-            </Text>
-            <VStack spacing={3} align="stretch">
-              {order.items &&
-                order.items.map((item, index) => (
-                  <Flex justify="space-between" key={index}>
-                    <Text>{item.name || `Item ${index + 1}`}</Text>
-                    <Text fontSize="sm" color={secondaryColor}>
-                      Qty: {item.quantity || 1}
-                    </Text>
-                  </Flex>
-                ))}
-            </VStack>
-          </Box>
 
           <Divider my={4} />
 
@@ -480,6 +439,7 @@ const CheckoutPage = () => {
                 Rs{(order.orderTotal || 0).toFixed(2)}
               </Text>
             </Flex>
+
             <Flex justify="space-between" align="center" mt={4}>
               <Text fontWeight="bold" color={textColor}>
                 Quantity
@@ -490,8 +450,11 @@ const CheckoutPage = () => {
                 type="number"
                 min="1"
                 value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                bg={useColorModeValue("gray.100", "gray.600")}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setQuantity(value >= 1 ? value : 1);
+                }}
+                bg={inputBg}
               />
             </Flex>
           </Box>
@@ -513,44 +476,23 @@ const CheckoutPage = () => {
             </HStack>
           </Flex>
 
-          {/* Payment Method Selection */}
+          {/* Payment Method (PayHere only) */}
           <Box mb={6}>
             <Text fontSize="lg" fontWeight="semibold" mb={3} color={textColor}>
               Payment Method
             </Text>
-
-            <RadioGroup
-              onChange={setPaymentMethod}
-              value={paymentMethod}
-              colorScheme="purple"
-            >
+            <RadioGroup value={paymentMethod} onChange={setPaymentMethod}>
               <Stack direction="column" spacing={3}>
                 <Radio value="payhere">
                   <VStack align="start" spacing={0}>
                     <Text fontWeight="medium">PayHere</Text>
                     <Text fontSize="sm" color={secondaryColor}>
-                      Pay securely with credit/debit card or digital wallet
-                    </Text>
-                  </VStack>
-                </Radio>
-
-                <Radio value="cod">
-                  <VStack align="start" spacing={0}>
-                    <Text fontWeight="medium">Cash on Delivery (COD)</Text>
-                    <Text fontSize="sm" color={secondaryColor}>
-                      Pay in cash when your order is delivered
+                      Pay securely with credit/debit card or wallet
                     </Text>
                   </VStack>
                 </Radio>
               </Stack>
             </RadioGroup>
-
-            {/* Payment method-specific information */}
-            {paymentMethod === "cod" && (
-              <Alert status="info" mt={3} borderRadius="md" fontSize="sm">
-                <AlertIcon />A 2% processing fee will be added to COD orders.
-              </Alert>
-            )}
           </Box>
 
           <Divider my={4} />
@@ -562,17 +504,17 @@ const CheckoutPage = () => {
               flex={1}
               onClick={handleSubmit}
               isLoading={isLoading}
-              loadingText={
-                paymentMethod === "payhere" ? "Processing..." : "Placing Order"
-              }
+              loadingText="Processing..."
+              isDisabled={!order || !user}
             >
-              {paymentMethod === "payhere" ? "Pay Now" : "Place COD Order"}
+              Pay Now
             </Button>
             <Button
               variant="outline"
               colorScheme="gray"
               flex={1}
               onClick={() => navigate(-1)}
+              isDisabled={isLoading}
             >
               Go Back
             </Button>
