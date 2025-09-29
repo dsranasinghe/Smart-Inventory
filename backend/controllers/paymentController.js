@@ -55,22 +55,24 @@ export const handlePaymentNotification = async (req, res) => {
     console.log('PayHere Notification Received:', req.body);
     
     const paymentData = req.body;
-    const { order_id, payment_id, status_code, ...otherData } = paymentData;
+    const { order_id, payment_id, status_code } = paymentData;
 
     // Validate required fields
-    if (!order_id || !payment_id) {
-      console.error('Invalid notification data:', paymentData);
-      return res.status(400).send('Invalid notification data');
-    }
+    // if (!order_id || !payment_id) {
+    //   console.error('Invalid notification data:', paymentData);
+    //   return res.status(400).send('Invalid notification data');
+    // }
+    console.log('Webhook data:', paymentData);
+    return res.status(200).send('OK');
 
-    // Find the order
+    // Find the order using orderNumber (from PayHere) not MongoDB _id
     const order = await Order.findOne({ orderNumber: order_id });
     if (!order) {
-      console.error('Order not found:', order_id);
+      console.error('Order not found for orderNumber:', order_id);
       return res.status(404).send('Order not found');
     }
 
-    console.log('📦 Order found:', order.orderNumber);
+    console.log('Order found:', order.orderNumber, 'MongoDB ID:', order._id);
 
     // Check for duplicate payments
     const existingPayment = await Payment.findOne({ transactionId: payment_id });
@@ -79,25 +81,27 @@ export const handlePaymentNotification = async (req, res) => {
       return res.status(200).send('Payment already processed');
     }
 
-  
+    // Determine payment status based on PayHere status_code
     let paymentStatus = 'Pending';
+    let isPaymentSuccessful = false;
     
     if (status_code === '2') {
-      paymentStatus = 'Paid'; 
+      paymentStatus = 'Paid';
+      isPaymentSuccessful = true;
     } else if (status_code === '0') {
-      paymentStatus = 'Pending'; 
+      paymentStatus = 'Pending';
     } else {
-      paymentStatus = 'Failed'; 
+      paymentStatus = 'Failed';
     }
 
-    // Create payment record 
+    // Create and save payment record
     const payment = new Payment({
-      orderId: order._id,
-      transactionId: payment_id, 
+      orderId: order._id, // Use MongoDB ObjectId here
+      transactionId: payment_id,
       amount: parseFloat(paymentData.amount || order.orderTotal),
       currency: paymentData.currency || 'LKR',
-      status: paymentStatus, 
-      payhereStatus: status_code, 
+      status: paymentStatus,
+      payhereStatus: status_code,
       payhereData: paymentData,
       paymentMethod: 'payhere',
       supplier_id: order.supplier,
@@ -105,17 +109,26 @@ export const handlePaymentNotification = async (req, res) => {
       payment_date: new Date()
     });
 
-    // Save payment
     await payment.save();
-    console.log('💾 Payment saved to database:', payment._id);
+    console.log('Payment saved to database:', payment._id);
 
-    // Update order status
-    order.paymentStatus = paymentStatus; 
-    order.payments = order.payments || [];
-    order.payments.push(payment._id); 
-    
-    await order.save();
-    console.log('📝 Order updated:', order.orderNumber);
+    const updatedOrder = await Order.findByIdAndUpdate(
+      order._id, 
+      { 
+        paymentStatus: paymentStatus,
+        $push: { payments: payment._id }
+      },
+      { new: true, runValidators: true } 
+         );
+ console.log('Order after update - paymentStatus:', updatedOrder.paymentStatus);
+
+    if (!updatedOrder) {
+      console.error('Failed to update order status for order:', order._id);
+      throw new Error('Order update failed');
+    }
+
+    console.log('Order payment status updated to:', updatedOrder.paymentStatus);
+    console.log('Payment processing completed successfully');
 
     res.status(200).send('Notification processed successfully');
 
@@ -124,6 +137,7 @@ export const handlePaymentNotification = async (req, res) => {
     res.status(500).send('Error processing payment notification');
   }
 };
+
 // Get supplier payments
 export const getSupplierPayments = async (req, res) => {
   try {

@@ -88,8 +88,9 @@ router.get("/orders", authenticate, getManagerOrders);
 router.get("/orders/supplier/:userId", authenticate, getSupplierOrders);
 router.put("/orders/:orderId/status", authenticate, updateOrderStatus);
 router.patch("/orders/:id/payment-status", authenticate, updatePaymentStatus);
-
 router.get("/orders/:orderId", authenticate, getOrderById);
+
+
 
 router.get("/test-manager", testManager);
 

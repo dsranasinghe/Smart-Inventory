@@ -29,13 +29,13 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // 🎨 Colors
+  // Colors
   const cardBg = useColorModeValue("white", "gray.700");
   const textColor = useColorModeValue("gray.800", "white");
   const secondaryColor = useColorModeValue("gray.500", "gray.300");
   const inputBg = useColorModeValue("gray.100", "gray.600");
 
-  // 📌 State
+  // State
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("payhere");
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ const CheckoutPage = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [user, setUser] = useState(null);
 
-  // 📌 Get user data from localStorage on component mount
+  // Get user data from localStorage on component mount
   useEffect(() => {
     const getUserData = () => {
       try {
@@ -85,7 +85,7 @@ const CheckoutPage = () => {
     getUserData();
   }, [navigate, toast]);
 
-  // 📌 Fetch order details
+  // Fetch order details
   useEffect(() => {
     const fetchOrderData = async () => {
       // Don't fetch order data if user is not authenticated
@@ -142,10 +142,9 @@ const CheckoutPage = () => {
     }
   }, [orderId, toast, navigate, user]);
 
-  // 🎯 Get supplier contact information
+  // Get supplier contact information
   const getSupplierContact = () => {
-    // You need to implement this based on your data structure
-    // This is a placeholder - adjust according to your actual data
+  
     if (order?.supplier) {
       return {
         phone: order.supplier.phone || "0000000000",
@@ -155,12 +154,12 @@ const CheckoutPage = () => {
     
     // Fallback to user data if supplier data isn't available
     return {
-      phone: user?.phone || "0771234567", // Default Sri Lankan number
+      phone: user?.phone || "0771234567",
       address: user?.address || "Colombo, Sri Lanka"
     };
   };
 
-  // 🎯 Handle form submission
+  // Handle form submission
   const handleSubmit = async () => {
     if (!user) {
       toast({
@@ -257,7 +256,7 @@ const CheckoutPage = () => {
         merchant_id: merchantId,
         return_url: `${window.location.origin}/payment-success`,
         cancel_url: `${window.location.origin}/payment-cancel`,
-        notify_url: "https://0987c8e7dd8b.ngrok-free.app/api/payments/notify",
+        notify_url: "https://2e9450ba7cad.ngrok-free.app/api/payments/notify",
         order_id: order.orderNumber,
         items: `Payment for Order ${order.orderNumber}`,
         amount: amount,

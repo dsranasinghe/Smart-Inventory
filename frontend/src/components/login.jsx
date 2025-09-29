@@ -45,7 +45,6 @@ const Login = () => {
 
     const data = await response.json();
 
-    // Save to localStorage for CheckoutPage
     localStorage.setItem('currentUser', JSON.stringify(data.user));
     localStorage.setItem('token', data.token);
 
