@@ -59,7 +59,7 @@ const PaymentPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Format currency for LKR
+
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-LK", {
       style: "currency",
@@ -76,8 +76,10 @@ const PaymentPage = () => {
     });
 
   const handlePayment = (orderId, supplierName) => {
-  navigate(`/payment/checkout/${orderId}`, { state: { supplierName } });
-};
+
+    navigate(`/payment/checkout/${orderId}`, { state: { supplierName } });
+  };
+
 
   return (
     <Flex bg={useColorModeValue("gray.50", "gray.900")} minH="100vh">
@@ -105,7 +107,6 @@ const PaymentPage = () => {
                   <Th>Supplier</Th>
                   <Th>Order Date</Th>
                   <Th>Total Amount</Th>
-                  <Th>Payment Due Date</Th>
                   <Th>Payment Status</Th>
                   <Th textAlign="center">Actions</Th>
                 </Tr>
@@ -114,16 +115,17 @@ const PaymentPage = () => {
                 {orders.map((order) => (
                   <Tr key={order._id}>
                     <Td>{order.orderNumber}</Td>
+
                     <Td>
                       {order.supplier?.user?.username || "Unknown Supplier"}
                     </Td>
                     <Td>{formatDate(order.orderDate)}</Td>
                     <Td>{formatCurrency(order.orderTotal)}</Td>
                     <Td>
-                      {order.paymentDueDate
-                        ? formatDate(order.paymentDueDate)
-                        : "N/A"}
+                      {order.supplier?.user?.username || "Unknown Supplier"}
                     </Td>
+                    <Td>{formatDate(order.orderDate)}</Td>
+                    <Td>{formatCurrency(order.orderTotal)}</Td>
                     <Td>
                       <Badge colorScheme="orange">{order.paymentStatus}</Badge>
                     </Td>

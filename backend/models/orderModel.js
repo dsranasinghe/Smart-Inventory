@@ -45,11 +45,16 @@ const orderSchema = new mongoose.Schema({
     enum: ['Pending', 'Paid', 'Failed'],
     default: 'Pending'
   },
-  
+
   payments: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Payment'
   }],
+
+  paymentDate: {  // ← ADD THIS MISSING FIELD
+    type: Date
+  },
+
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier',
@@ -68,7 +73,8 @@ const orderSchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true 
-  }
+  },
+ 
 });
 
 // Generate order number before saving
@@ -86,7 +92,7 @@ orderSchema.pre('save', function(next) {
       return total + (item.unitPriceAtOrder * item.quantity);
     }, 0);
   }
-  
+
   if (!this.trackingId) {
     this.trackingId = `TRK-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   }

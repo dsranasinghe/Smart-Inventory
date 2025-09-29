@@ -88,7 +88,9 @@ const Dashboard = () => {
           console.error("Dashboard data error:", error);
           return { data: null };
         }),
+
         axios.get("http://localhost:5000/api/dashboard/low-stocks", {
+
           headers: { Authorization: `Bearer ${token}` }
         }).catch(error => {
           console.error("Low stock items error:", error);

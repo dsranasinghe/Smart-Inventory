@@ -1,14 +1,14 @@
+
 // paymentController.js
 import Order from '../models/orderModel.js';
 import Payment from '../models/payment.js';
 import crypto from 'crypto';
 
-// Generate payment hash
+
 export const generatePaymentHash = async (req, res) => {
   try {
     const { order_id, amount } = req.body;
 
-    // Validate input
     if (!order_id || !amount) {
       return res.status(400).json({ error: 'Order ID and amount are required' });
     }
@@ -34,13 +34,22 @@ export const generatePaymentHash = async (req, res) => {
     // Generate the hash
     const hash = getMd5(
       merchantId + order_id + amountFormatted + currency + getMd5(merchantSecret)
+
+    const currency = "LKR";
+    const amountFormatted = parseFloat(amount).toFixed(2);
+
+    const hash = getMd5(
+      merchantID + order_id + amountFormatted + currency + getMd5(merchantSecret)
+
     );
 
     res.json({
       orderId: order_id,
       hash,
       amount: amountFormatted,
+
       merchantId,
+
       currency,
     });
   } catch (error) {
@@ -48,6 +57,7 @@ export const generatePaymentHash = async (req, res) => {
     res.status(500).json({ error: 'Failed to generate payment hash' });
   }
 };
+
 
 // Handle PayHere notification
 export const handlePaymentNotification = async (req, res) => {
@@ -80,6 +90,7 @@ export const handlePaymentNotification = async (req, res) => {
       console.log('Payment already exists:', payment_id);
       return res.status(200).send('Payment already processed');
     }
+
 
     // Determine payment status based on PayHere status_code
     let paymentStatus = 'Pending';
@@ -154,6 +165,7 @@ export const getSupplierPayments = async (req, res) => {
     const supplierPayments = payments.filter(payment => payment.orderId !== null);
 
     res.json(supplierPayments);
+
   } catch (error) {
     console.error('Error fetching supplier payments:', error);
     res.status(500).json({ error: 'Failed to fetch payments' });

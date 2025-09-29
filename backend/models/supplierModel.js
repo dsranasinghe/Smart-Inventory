@@ -8,7 +8,7 @@ const supplierSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  name: { // ADD THIS FIELD
+  name: { 
     type: String,
     required: true
   },
@@ -25,11 +25,28 @@ const supplierSchema = new mongoose.Schema({
     ref: 'Item',
     default: []
   }],
+  
+  // FIXED: Changed from ObjectId references to actual payment history objects
   orderHistory: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Order', 
-    default: []
+    order_id: {
+      type: String,
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true
+    },
+    payment_date: {
+      type: Date,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'paid', 'failed'],
+      default: 'pending'
+    }
   }],
+  
   createdAt: {
     type: Date,
     default: Date.now
@@ -56,6 +73,7 @@ supplierSchema.pre('save', async function(next) {
       this.name = user.username;
     }
   }
+  this.updatedAt = Date.now();
   next();
 });
 

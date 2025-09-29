@@ -113,6 +113,56 @@ const CheckoutPage = () => {
         if (!orderRes.data) throw new Error("No order data returned from API");
 
         setOrder(orderRes.data);
+
+        // Handle different supplier data structures
+        if (orderRes.data.supplier) {
+          // Case 1: Supplier is an embedded object with user data
+          if (
+            orderRes.data.supplier.user &&
+            orderRes.data.supplier.user.username
+          ) {
+            setSupplier(orderRes.data.supplier);
+          }
+          // Case 2: Supplier is just an ID string, need to fetch details
+          else if (typeof orderRes.data.supplier === "string") {
+            try {
+              const supplierRes = await axios.get(
+                `http://localhost:5000/api/suppliers/${orderRes.data.supplier}`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+              setSupplier(supplierRes.data);
+            } catch (supplierError) {
+              console.warn("Failed to fetch supplier details:", supplierError);
+              // Fallback: create a minimal supplier object
+              setSupplier({
+                username: "Unknown Supplier",
+                _id: orderRes.data.supplier,
+              });
+            }
+          }
+          // Case 3: Supplier is already a full object but with different structure
+          else if (
+            orderRes.data.supplier.username ||
+            orderRes.data.supplier.name
+          ) {
+            setSupplier(orderRes.data.supplier);
+          } else {
+            console.warn(
+              "Unexpected supplier data structure:",
+              orderRes.data.supplier
+            );
+            setSupplier({
+              username: "Unknown Supplier",
+              ...orderRes.data.supplier,
+            });
+          }
+        } else {
+          console.warn("No supplier data found in order");
+          setSupplier({ username: "Unknown Supplier" });
+        }
+
       } catch (error) {
         console.error("Error fetching order data:", error);
         toast({
@@ -206,6 +256,7 @@ const CheckoutPage = () => {
     }
   };
 
+
   // REAL PayHere payment handler
   const handlePayHerePayment = async () => {
     try {
@@ -215,26 +266,23 @@ const CheckoutPage = () => {
         throw new Error("User information not found. Please log in again.");
       }
 
-      if (!order) {
-        throw new Error("Order data not available");
-      }
-
-      // Check if payhere is loaded
-      if (typeof window.payhere === "undefined") {
+      if (!order) throw new Error("Order data not available");
+      if (typeof window.payhere === "undefined")
         throw new Error(
           "PayHere payment gateway not loaded. Please refresh the page."
         );
-      }
 
       const supplierContact = getSupplierContact();
       
       // 1. Get payment hash from backend
       const response = await axios.post(
         "http://localhost:5000/api/payments/generate-hash",
+
         { 
           order_id: order.orderNumber, 
           amount: total 
         },
+
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -243,14 +291,14 @@ const CheckoutPage = () => {
         }
       );
 
-      // Check if hash was generated successfully
-      if (!response.data.hash) {
+      if (!response.data.hash)
         throw new Error("Failed to generate payment hash");
-      }
 
       const { hash, merchantId, amount, currency } = response.data;
 
+
       // 2. Create payment object with safe fallbacks
+
       const payment = {
         sandbox: true,
         merchant_id: merchantId,
@@ -259,9 +307,11 @@ const CheckoutPage = () => {
         notify_url: "https://2e9450ba7cad.ngrok-free.app/api/payments/notify",
         order_id: order.orderNumber,
         items: `Payment for Order ${order.orderNumber}`,
+
         amount: amount,
         currency: currency,
         hash: hash,
+
         first_name: user?.first_name || user?.username || "Customer",
         last_name: user?.last_name || " ",
         email: user?.email || "customer@example.com",
@@ -269,6 +319,7 @@ const CheckoutPage = () => {
         address: supplierContact.address,
         city: "Colombo",
         country: "Sri Lanka",
+
         custom_1: user?._id || user?.id || "user_id",
         custom_2: order.supplier?._id || order.supplier?.id || order.supplier || "supplier_id",
       };
@@ -288,6 +339,72 @@ const CheckoutPage = () => {
         });
         navigate("/payment-success");
       };
+
+        custom_1: user?._id || "manager_id",
+        custom_2: order.supplier?._id || order.supplier,
+      };
+
+      // 3. Set up PayHere callbacks
+     window.payhere.onCompleted = async function (onCompletedOrderId) {
+  console.log("Payment completed. OrderID:", onCompletedOrderId);
+
+  const supplierId =
+    typeof order.supplier.user === "string"
+      ? order.supplier.user
+      : order.supplier._id;
+
+  console.log("Order ID:", order._id);
+  console.log("Supplier ID:", supplierId);
+  console.log("Manager ID:", user?._id);
+  console.log("Total amount:", total);
+
+  if (!user?._id) {
+    toast({
+      title: "Error",
+      description: "Manager ID not found. Cannot save payment.",
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+    return;
+  }
+
+  try {
+    await axios.post(
+      "http://localhost:5000/api/payments/manual",
+      {
+        order_id: order._id,
+        payment_id: "PH_" + new Date().getTime(),
+        amount: Number(total),
+        currency: "LKR",
+        supplier_id: supplierId,
+        manager_id: user._id,
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    toast({
+      title: "Payment Successful",
+      description: "Your payment has been recorded successfully.",
+      status: "success",
+      duration: 5000,
+      isClosable: true,
+    });
+  } catch (err) {
+    console.error("Failed to save payment manually:", err);
+    toast({
+      title: "Payment Save Failed",
+      description:
+        "Payment completed but could not be recorded. Contact support.",
+      status: "error",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+
+  navigate("/payment-success");
+};
+
 
       window.payhere.onDismissed = function () {
         console.log("Payment dismissed");
@@ -313,7 +430,7 @@ const CheckoutPage = () => {
         });
       };
 
-      // 4. Start payment
+      // 4. Start PayHere payment
       window.payhere.startPayment(payment);
 
     } catch (error) {
