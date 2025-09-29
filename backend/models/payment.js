@@ -1,18 +1,61 @@
 import mongoose from 'mongoose';
 
 const paymentSchema = new mongoose.Schema({
-  order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
-   payment_id: { type: String, required: true }, 
-  amount: { type: Number, required: true }, 
-  currency: { type: String, default: 'LKR' },
-  status_code: { type: String, required: true }, 
-  method: { type: String }, 
-  status_message: { type: String }, 
-  supplier_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', required: true },
-  manager_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, 
-  order_date: { type: Date, default: Date.now }, 
-  payment_date: { type: Date, default: Date.now },
-  timestamp: { type: Date, default: Date.now }
-}, { timestamps: true });
+  orderId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Order', 
+    required: true 
+  },
+  transactionId: { 
+    type: String, 
+    required: true,
+    unique: true 
+  }, 
+  amount: { 
+    type: Number, 
+    required: true 
+  }, 
+  currency: { 
+    type: String, 
+    default: 'LKR' 
+  },
+ 
+  status: {
+    type: String,
+    enum: ['Pending', 'Paid', 'Failed'], 
+    default: 'Pending'
+  },
+  
+  payhereStatus: { 
+    type: String  
+  },
+  payhereData: { 
+    type: Object  
+  },
+ 
+  paymentMethod: {
+    type: String,
+    default: 'payhere'
+  },
+  
+  supplier_id: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Supplier', 
+    required: true 
+  },
+  manager_id: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
 
-export default mongoose.model('Payment', paymentSchema);
+  payment_date: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, { 
+  timestamps: true 
+});
+
+const Payment = mongoose.model('Payment', paymentSchema);
+export default Payment;

@@ -41,7 +41,7 @@ const getStatus = (stockLevel, reorderThreshold) => {
 };
 
 const statusColors = {
-  "In Stock": "green",
+  "In Stock": "blue",
   "Low Stock": "yellow",
   "Out of Stock": "red",
   "Expiring Soon": "orange",

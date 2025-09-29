@@ -64,6 +64,8 @@ const OrdersPage = () => {
     navigate("/orders/new");
   };
 
+
+
   const filteredOrders =
     statusFilter === "All"
       ? orders
@@ -180,7 +182,7 @@ const OrdersPage = () => {
                           size="sm"
                           colorScheme="red"
                           variant="ghost"
-                        />
+                         />
                       </HStack>
                     </Td>
                   </Tr>

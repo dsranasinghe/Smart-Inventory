@@ -1,5 +1,5 @@
 import { Center, Text, Button, Icon } from "@chakra-ui/react";
-import { FaBoxOpen, FaPlus } from "react-icons/fa"; // ← ADD FaPlus HERE
+import { FaBoxOpen, FaPlus } from "react-icons/fa"; 
 
 const EmptyState = ({ onAddItem }) => {
   return (

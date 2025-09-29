@@ -59,7 +59,7 @@ const PaymentPage = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  //  Format currency for LKR
+
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-LK", {
       style: "currency",
@@ -76,8 +76,10 @@ const PaymentPage = () => {
     });
 
   const handlePayment = (orderId, supplierName) => {
+
     navigate(`/payment/checkout/${orderId}`, { state: { supplierName } });
   };
+
 
   return (
     <Flex bg={useColorModeValue("gray.50", "gray.900")} minH="100vh">
@@ -113,6 +115,12 @@ const PaymentPage = () => {
                 {orders.map((order) => (
                   <Tr key={order._id}>
                     <Td>{order.orderNumber}</Td>
+
+                    <Td>
+                      {order.supplier?.user?.username || "Unknown Supplier"}
+                    </Td>
+                    <Td>{formatDate(order.orderDate)}</Td>
+                    <Td>{formatCurrency(order.orderTotal)}</Td>
                     <Td>
                       {order.supplier?.user?.username || "Unknown Supplier"}
                     </Td>
