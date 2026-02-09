@@ -1,256 +1,208 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 import {
-  Box,
-  Flex,
-  Text,
-  VStack,
-  HStack,
-  Button,
-  Divider,
-  useColorModeValue,
-  Avatar,
-  IconButton,
-  Badge,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  useColorMode,
-  Spacer, 
+  Box, Flex, Text, VStack, HStack, Avatar, Spinner,
+  Alert, AlertIcon, AlertTitle, AlertDescription, Grid
 } from "@chakra-ui/react";
-import { FaMoon, FaSun, FaBell } from "react-icons/fa";
-import { FiMenu } from "react-icons/fi";
+import { FaStore } from "react-icons/fa";
+import SupplierSidebar from "../components/SupplierSidebar";
+import SupplierItems from "../components/supplier/SupplierItems";
+import SupplierOrders from "../components/supplier/SupplierOrders";
 
-// Mock Data for Supplier Orders
-const supplierOrders = [
-  {
-    date: "2025/01/19",
-    orders: [
-      { name: "Product A", price: "$40.00" },
-      { name: "Product B", price: "$40.00" },
-    ],
-    subtotal: "$80.00",
-    discount: "$0.00",
-    shipping: "$2.00",
-    total: "$82.00",
-    status: "Delivered",
-  },
-  {
-    date: "2025/02/10",
-    orders: [
-      { name: "Product C", price: "$25.00" },
-      { name: "Product D", price: "$30.00" },
-    ],
-    subtotal: "$55.00",
-    discount: "$5.00",
-    shipping: "$3.00",
-    total: "$53.00",
-    status: "Pending",
-  },
-];
+const SupplierProfile = () => {
+  const { userId } = useParams();
+  const [supplierData, setSupplierData] = useState(null);
+    const [orders, setOrders] = useState([]); 
 
-// Mock Data for Upcoming Orders
-const upcomingOrders = [
-  {
-    date: "2025/03/15",
-    products: [
-      { name: "Product E", quantity: 10 },
-      { name: "Product F", quantity: 5 },
-    ],
-    expectedDelivery: "2025/03/20",
-  },
-  {
-    date: "2025/03/20",
-    products: [
-      { name: "Product G", quantity: 8 },
-      { name: "Product H", quantity: 12 },
-    ],
-    expectedDelivery: "2025/03/25",
-  },
-];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [activeTab, setActiveTab] = useState("Dashboard");
 
-// Mock Data for Notifications
-const notifications = [
-  { message: "New order received for 2025/03/15", date: "2025/03/10" },
-  { message: "Payment received for order 2025/01/19", date: "2025/01/25" },
-];
+useEffect(() => {
+    const fetchSupplierData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        
+        // Fetch supplier data
+        const supplierResponse = await axios.get(
+          `http://localhost:5000/api/suppliers/user/${userId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setSupplierData(supplierResponse.data);
 
-const SupplierDashboard = () => {
-  const bgColor = useColorModeValue("gray.100", "gray.900");
-  const cardBgColor = useColorModeValue("white", "gray.700");
-  const textColor = useColorModeValue("gray.800", "white");
-  const { colorMode, toggleColorMode } = useColorMode();
+        // FETCH ORDERS SEPARATELY ← ADD THIS
+        const ordersResponse = await axios.get(
+          `http://localhost:5000/api/orders/supplier/${userId}`, // ← THIS IS THE MISSING API CALL
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setOrders(ordersResponse.data);
+
+      } catch (error) {
+        setError(error.response?.data?.message || "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSupplierData();
+  }, [userId]);
+
+
+  const handleItemAdded = (newItem) => {
+    setSupplierData((prev) => ({
+      ...prev,
+      itemsSupplied: [...prev.itemsSupplied, newItem],
+    }));
+    setSuccess("Item added successfully!");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleItemUpdated = (updatedItem) => {
+    setSupplierData((prev) => ({
+      ...prev,
+      itemsSupplied: prev.itemsSupplied.map((item) =>
+        item._id === updatedItem._id ? updatedItem : item
+      ),
+    }));
+    setSuccess("Item updated successfully!");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleItemDeleted = (itemId) => {
+    setSupplierData((prev) => ({
+      ...prev,
+      itemsSupplied: prev.itemsSupplied.filter((item) => item._id !== itemId),
+    }));
+    setSuccess("Item deleted successfully!");
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  if (loading) {
+    return (
+      <Flex justify="center" align="center" height="100vh">
+        <Spinner size="xl" />
+      </Flex>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box textAlign="center" p={10}>
+        <Text fontSize="xl" color="red.500">
+          {error}
+        </Text>
+      </Box>
+    );
+  }
+
+  if (!supplierData) {
+    return <Text>Supplier data not found</Text>;
+  }
 
   return (
-    <Flex bg={bgColor} minH="100vh" p={4}>
-      {/* Sidebar */}
-      <VStack
-        bg={cardBgColor}
-        w={{ base: "full", md: "250px" }}
+    <Flex minH="100vh">
+      {/* Sidebar (fixed left) */}
+      <Box
+        w="250px"
+        bg="gray.100"
         p={4}
-        spacing={6}
-        boxShadow="md"
-        borderRadius="md"
+        borderRight="1px solid"
+        borderColor="gray.200"
       >
-        <IconButton
-          icon={<FiMenu />}
-          aria-label="Menu"
-          size="lg"
-          variant="ghost"
-        />
-        <VStack align="start" w="full">
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Orders
-          </Button>
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Profile
-          </Button>
-        </VStack>
-        <Spacer /> {/* Spacer to push content to the bottom */}
-        <VStack align="start" w="full">
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Settings
-          </Button>
-          <Button variant="ghost" justifyContent="flex-start" w="full">
-            Log out
-          </Button>
-        </VStack>
-      </VStack>
+        <SupplierSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      </Box>
 
-      {/* Main Content */}
-      <VStack flex={1} p={6} spacing={6}>
-        {/* Top Bar */}
-        <Flex w="full" justify="space-between" align="center">
-          <Text fontSize="xl" fontWeight="bold" color={textColor}>
-            Supplier Dashboard
-          </Text>
-          <HStack spacing={4}>
-            <IconButton
-              icon={<FaBell />}
-              aria-label="Notifications"
-              variant="ghost"
-              color={textColor}
-            />
-            <IconButton
-              icon={colorMode === "dark" ? <FaSun /> : <FaMoon />}
-              onClick={toggleColorMode}
-              aria-label="Toggle Theme"
-              variant="ghost"
-              color={textColor}
-            />
-            <Avatar name="Ann Lee" />
-          </HStack>
-        </Flex>
+      {/* Main content */}
+      <Box flex="1" p={8} bg="gray.50">
+        {/* Success/Error Alerts */}
+        {success && (
+          <Alert status="success" mb={6} borderRadius="md">
+            <AlertIcon />
+            <AlertTitle mr={2}>Success!</AlertTitle>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+        {error && (
+          <Alert status="error" mb={6} borderRadius="md">
+            <AlertIcon />
+            <AlertTitle mr={2}>Error!</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-        {/* Notifications */}
-        <Box
-          bg={cardBgColor}
-          p={6}
-          rounded="md"
-          boxShadow="md"
-          w="full"
-        >
-          <Text fontSize="lg" fontWeight="bold" color={textColor} mb={4}>
-            Notifications
-          </Text>
-          {notifications.map((notification, index) => (
-            <Box key={index} mb={4}>
-              <Text color={textColor}>{notification.message}</Text>
-              <Text fontSize="sm" color={useColorModeValue("gray.500", "gray.400")}>
-                {notification.date}
-              </Text>
-            </Box>
-          ))}
-        </Box>
-
-        {/* Upcoming Orders */}
-        <Box
-          bg={cardBgColor}
-          p={6}
-          rounded="md"
-          boxShadow="md"
-          w="full"
-        >
-          <Text fontSize="lg" fontWeight="bold" color={textColor} mb={4}>
-            Upcoming Orders
-          </Text>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>Order Date</Th>
-                <Th>Products</Th>
-                <Th>Expected Delivery</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {upcomingOrders.map((order, index) => (
-                <Tr key={index}>
-                  <Td>{order.date}</Td>
-                  <Td>
-                    {order.products.map((product, idx) => (
-                      <Text key={idx}>
-                        {product.name} (x{product.quantity})
-                      </Text>
-                    ))}
-                  </Td>
-                  <Td>{order.expectedDelivery}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </Box>
-
-        {/* Past Orders */}
-        {supplierOrders.map((order, index) => (
-          <Box
-            key={index}
-            bg={cardBgColor}
-            p={6}
-            rounded="md"
-            boxShadow="md"
-            w="full"
-          >
-            <Flex justify="space-between" align="center" mb={4}>
-              <Text fontSize="lg" fontWeight="bold" color={textColor}>
-                Order Date: {order.date}
-              </Text>
-              <Badge colorScheme={order.status === "Delivered" ? "green" : "orange"}>
-                {order.status}
-              </Badge>
-            </Flex>
-            {order.orders.map((item, idx) => (
-              <HStack key={idx} justify="space-between" w="full" mb={2}>
-                <Text color={textColor}>{item.name}</Text>
-                <Text color={textColor}>{item.price}</Text>
+        {/* Dashboard Tab */}
+        {activeTab === "Dashboard" && (
+          <>
+            <Box bg="white" p={6} borderRadius="md" boxShadow="sm" mb={8}>
+              <HStack spacing={6} align="center">
+                <Avatar
+                  icon={<FaStore />}
+                  name={supplierData.user?.username || "Supplier"}
+                  size="xl"
+                />
+                <VStack align="start" spacing={1}>
+                  <Text fontSize="2xl" fontWeight="bold">
+                    {supplierData.user?.username || "N/A"}
+                  </Text>
+                  <Text>{supplierData.user?.email || "N/A"}</Text>
+                  <Text>Phone: {supplierData.phoneNumber || "N/A"}</Text>
+                  <Text>Address: {supplierData.address || "N/A"}</Text>
+                  <Text>
+                    Member since:{" "}
+                    {supplierData.user?.createdAt
+                      ? new Date(supplierData.user.createdAt).toLocaleDateString()
+                      : "N/A"}
+                  </Text>
+                </VStack>
               </HStack>
-            ))}
-            <Divider my={4} />
-            <HStack justify="space-between">
-              <Text color={textColor}>Subtotal</Text>
-              <Text>{order.subtotal}</Text>
-            </HStack>
-            <HStack justify="space-between">
-              <Text color={textColor}>Discount</Text>
-              <Text>{order.discount}</Text>
-            </HStack>
-            <HStack justify="space-between">
-              <Text color={textColor}>Shipping</Text>
-              <Text>{order.shipping}</Text>
-            </HStack>
-            <Divider my={4} />
-            <HStack justify="space-between" fontWeight="bold">
-              <Text color={textColor}>Total</Text>
-              <Text>{order.total}</Text>
-            </HStack>
-            <Button mt={4} colorScheme="blackAlpha" w="full">
-              View Details
-            </Button>
-          </Box>
-        ))}
-      </VStack>
+            </Box>
+
+            <Grid templateColumns="repeat(3, 1fr)" gap={6}>
+              <Box bg="white" p={6} borderRadius="md" boxShadow="sm">
+                <Text fontWeight="bold">Total Items</Text>
+                <Text fontSize="2xl">
+                  {supplierData.itemsSupplied?.length || 0}
+                </Text>
+              </Box>
+              <Box bg="white" p={6} borderRadius="md" boxShadow="sm">
+                <Text fontWeight="bold">Active Orders</Text>
+                <Text fontSize="2xl">
+                  {supplierData.orderHistory?.filter(
+                    (o) => o.deliveryStatus !== "Delivered"
+                  ).length || 0}
+                </Text>
+              </Box>
+              <Box bg="white" p={6} borderRadius="md" boxShadow="sm">
+                <Text fontWeight="bold">Completed Orders</Text>
+                <Text fontSize="2xl">
+                  {supplierData.orderHistory?.filter(
+                    (o) => o.deliveryStatus === "Delivered"
+                  ).length || 0}
+                </Text>
+              </Box>
+            </Grid>
+          </>
+        )}
+
+        {/* Items Tab */}
+        {activeTab === "Items" && (
+          <SupplierItems
+            items={supplierData.itemsSupplied}
+            userId={userId}
+            onItemAdded={handleItemAdded}
+            onItemUpdated={handleItemUpdated}
+            onItemDeleted={handleItemDeleted}
+          />
+        )}
+
+        {/* Orders Tab */}
+       {activeTab === "Orders" && (
+      <SupplierOrders orders={orders} />
+        )}
+      </Box>
     </Flex>
   );
 };
 
-export default SupplierDashboard;
+export default SupplierProfile;

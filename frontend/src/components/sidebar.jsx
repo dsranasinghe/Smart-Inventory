@@ -1,5 +1,11 @@
 import React from "react";
-import { VStack, Text, Icon, Link, Box, useColorModeValue } from "@chakra-ui/react";
+import {
+  VStack,
+  Text,
+  Icon,
+  Flex,
+  useColorModeValue,
+} from "@chakra-ui/react";
 import {
   FaBox,
   FaShoppingCart,
@@ -11,14 +17,39 @@ import {
   FaWallet,
   FaHome,
 } from "react-icons/fa";
+import { NavLink, useNavigate } from "react-router-dom";
 
-const Sidebar = () => {
-  // Define colors for light/dark mode
+const Sidebar = ({ userRole = "manager" }) => {  // Default to manager if not specified
   const bgColor = useColorModeValue("white", "gray.800");
   const textColor = useColorModeValue("gray.800", "white");
   const hoverBgColor = useColorModeValue("gray.200", "gray.700");
   const activeBgColor = useColorModeValue("purple.500", "purple.200");
   const activeTextColor = useColorModeValue("white", "gray.800");
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
+  // Common items for both roles
+  const commonItems = [
+    { label: "Dashboard", icon: FaHome, to: userRole === "manager" ? "/manager" : "/staff" },
+    { label: "Inventory", icon: FaBox, to: userRole === "manager" ? "/inventory" : "" },
+  ];
+
+  // Manager-specific items
+  const managerItems = [
+    { label: "Orders", icon: FaShoppingCart, to: "/orders" },
+    { label: "Suppliers", icon: FaUsers, to: "/suppliers" },
+    { label: "Payment", icon: FaWallet, to: "/payment" },
+   
+  ];
+
+  // Combine items based on user role
+  const navItems = userRole === "manager" 
+    ? [...commonItems, ...managerItems] 
+    : commonItems;
 
   return (
     <VStack
@@ -28,117 +59,53 @@ const Sidebar = () => {
       p={5}
       align="stretch"
       boxShadow="lg"
-      spacing={4}
+      spacing={2}
     >
-      {/* Logo or Title */}
       <Text fontSize="2xl" fontWeight="bold" color="purple.500" mb={6}>
         Inventory System
       </Text>
 
-      {/* Sidebar Links */}
+      {navItems.map((item, index) => (
+        <NavLink
+          key={index}
+          to={item.to}
+          style={{ textDecoration: "none" }}
+          end
+          className={({ isActive }) =>
+            isActive ? "active-link" : ""
+          }
+        >
+          <Flex
+            align="center"
+            p={3}
+            borderRadius="md"
+            _hover={{ bg: hoverBgColor }}
+            color={textColor}
+            transition="0.2s"
+            _activeLink={{ bg: activeBgColor, color: activeTextColor }}
+            as="div"
+          >
+            <Icon as={item.icon} mr={2} />
+            <Text>{item.label}</Text>
+          </Flex>
+        </NavLink>
+      ))}
 
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaHome} mr={2} />
-        Dashboard
-      </Link>
-
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaBox} mr={2} />
-        Inventory
-      </Link>
-
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaShoppingCart} mr={2} />
-        Orders
-      </Link>
-
-      
-
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaWarehouse} mr={2} />
-        InStock
-      </Link>
-
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaUsers} mr={2} />
-        Suppliers
-      </Link>
-
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaChartBar} mr={2} />
-        Report
-      </Link>
-      
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaWallet} mr={2} />
-        Payment
-      </Link>
-
-      <Link
-        p={3}
-        borderRadius="md"
-        _hover={{ bg: hoverBgColor }}
-        _activeLink={{ bg: activeBgColor, color: activeTextColor }}
-        color={textColor}
-      >
-        <Icon as={FaCog} mr={2} />
-        Settings
-      </Link>
-
-      {/* Logout Link */}
-      <Box mt="auto">
-        <Link
+      <Flex mt="auto">
+        <Flex
+          align="center"
           p={3}
           borderRadius="md"
           _hover={{ bg: hoverBgColor }}
           color={textColor}
+          cursor="pointer"
+          w="full"
+          onClick={handleLogout}
         >
           <Icon as={FaSignOutAlt} mr={2} />
-          Logout
-        </Link>
-      </Box>
+          <Text>Logout</Text>
+        </Flex>
+      </Flex>
     </VStack>
   );
 };

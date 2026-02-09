@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
   Heading,
   Input,
   Select,
-  Textarea,
   Grid,
   GridItem,
   IconButton,
@@ -17,24 +16,52 @@ import {
   Divider,
   HStack,
   VStack,
+  Spinner,
 } from "@chakra-ui/react";
 import { FaUpload, FaTrash, FaCalendarAlt } from "react-icons/fa";
+import axios from "axios";
 
 const InventoryForm = () => {
   const [formData, setFormData] = useState({
     name: "",
     category: "",
-    sellingPrice: "",
-    costPrice: "",
-    stockQuantity: "",
-    orderType: "",
     supplier: "",
-    dateAdded: "",
-    description: "",
+    price: "",
+    stockLevel: "",
+    expirationDate: "",
+    reorderThreshold: "",
     image: null,
   });
 
+  const [suppliers, setSuppliers] = useState([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(true);
   const toast = useToast();
+
+  // Fetch suppliers on component mount
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:5000/api/suppliers", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setSuppliers(response.data);
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch suppliers",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setSuppliersLoading(false);
+      }
+    };
+
+    fetchSuppliers();
+  }, [toast]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,7 +76,17 @@ const InventoryForm = () => {
 
   const handleSubmit = async (draft = false) => {
     try {
-      const payload = { ...formData, draft };
+      const payload = {
+        name: formData.name,
+        category: formData.category,
+        supplier: formData.supplier,
+        price: parseFloat(formData.price),
+        stockLevel: parseInt(formData.stockLevel),
+        expirationDate: formData.expirationDate,
+        reorderThreshold: parseInt(formData.reorderThreshold),
+        draft,
+      };
+
       const response = await fetch("http://localhost:5000/api/inventory", {
         method: "POST",
         headers: {
@@ -71,13 +108,11 @@ const InventoryForm = () => {
       setFormData({
         name: "",
         category: "",
-        sellingPrice: "",
-        costPrice: "",
-        stockQuantity: "",
-        orderType: "",
         supplier: "",
-        dateAdded: "",
-        description: "",
+        price: "",
+        stockLevel: "",
+        expirationDate: "",
+        reorderThreshold: "",
         image: null,
       });
     } catch (error) {
@@ -110,25 +145,44 @@ const InventoryForm = () => {
             <FormControl>
               <FormLabel>Category</FormLabel>
               <Select name="category" value={formData.category} onChange={handleInputChange}>
-                <option value="Bakery">Bakery</option>
+                <option value="">Select</option>
                 <option value="Beverages">Beverages</option>
+                <option value="Personal Care">Personal Care</option>
+                <option value="Fruits">Fruits</option>
+                <option value="Bakery">Bakery</option>
                 <option value="Dairy">Dairy</option>
               </Select>
             </FormControl>
 
             <FormControl>
-              <FormLabel>Selling Price</FormLabel>
-              <Input name="sellingPrice" value={formData.sellingPrice} onChange={handleInputChange} />
+              <FormLabel>Supplier</FormLabel>
+              {suppliersLoading ? (
+                <Spinner />
+              ) : (
+                <Select
+                  name="supplier"
+                  value={formData.supplier}
+                  onChange={handleInputChange}
+                  placeholder="Select supplier"
+                >
+                  {suppliers.map((supplier) => (
+                    <option key={supplier._id} value={supplier._id}>
+                      {supplier.username}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </FormControl>
 
             <FormControl>
-              <FormLabel>Cost Price</FormLabel>
-              <Input name="costPrice" value={formData.costPrice} onChange={handleInputChange} />
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>Stock Quantity</FormLabel>
-              <Input name="stockQuantity" value={formData.stockQuantity} onChange={handleInputChange} />
+              <FormLabel>Price</FormLabel>
+              <Input
+                name="price"
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={handleInputChange}
+              />
             </FormControl>
           </VStack>
         </GridItem>
@@ -137,33 +191,40 @@ const InventoryForm = () => {
         <GridItem>
           <VStack spacing={4}>
             <FormControl>
-              <FormLabel>Order Type</FormLabel>
-              <Input name="orderType" value={formData.orderType} onChange={handleInputChange} />
+              <FormLabel>Stock Level</FormLabel>
+              <Input
+                name="stockLevel"
+                type="number"
+                value={formData.stockLevel}
+                onChange={handleInputChange}
+              />
             </FormControl>
 
             <FormControl>
-              <FormLabel>Supplier</FormLabel>
-              <Select name="supplier" value={formData.supplier} onChange={handleInputChange}>
-                <option value="Fresh Farms">Fresh Farms</option>
-                <option value="Local Market">Local Market</option>
-              </Select>
+              <FormLabel>Reorder Threshold</FormLabel>
+              <Input
+                name="reorderThreshold"
+                type="number"
+                value={formData.reorderThreshold}
+                onChange={handleInputChange}
+              />
             </FormControl>
 
             <FormControl>
-              <FormLabel>Short Description</FormLabel>
-              <Textarea name="description" value={formData.description} onChange={handleInputChange} />
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>Date Added</FormLabel>
+              <FormLabel>Expiration Date</FormLabel>
               <HStack>
                 <IconButton icon={<FaCalendarAlt />} aria-label="Select Date" />
-                <Input type="date" name="dateAdded" value={formData.dateAdded} onChange={handleInputChange} />
+                <Input
+                  type="date"
+                  name="expirationDate"
+                  value={formData.expirationDate}
+                  onChange={handleInputChange}
+                />
               </HStack>
             </FormControl>
 
             <FormControl>
-              <FormLabel>Product Image</FormLabel>
+              <FormLabel>Product Image (Optional)</FormLabel>
               <Box p={4} border="2px dashed gray" borderRadius="md" textAlign="center">
                 {formData.image ? (
                   <Image src={formData.image} boxSize="150px" borderRadius="md" mx="auto" mb={2} />
@@ -191,10 +252,7 @@ const InventoryForm = () => {
 
       {/* Buttons */}
       <Flex mt={8} justifyContent="flex-end" gap={4}>
-        <Button colorScheme="purple" variant="outline" onClick={() => handleSubmit(true)}>
-          Save as Draft
-        </Button>
-        <Button colorScheme="purple" onClick={() => handleSubmit(false)}>
+              <Button colorScheme="purple" onClick={() => handleSubmit(false)}>
           Save & Publish
         </Button>
       </Flex>

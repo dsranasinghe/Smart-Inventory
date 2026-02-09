@@ -23,9 +23,11 @@ const Navbar = () => {
             <Button colorScheme="red" onClick={logout} size="sm">Logout</Button>
           ) : (
             <>
-              <Button variant="outline" colorScheme="blackAlpha" size="sm" onClick={() => navigate('/login')}>Sign in</Button>
-              <Button bg="#3C0A44" color="white" size="sm" onClick={() => navigate('/register')}>Register</Button>
+              <Button bg="#3C0A44" color="white" size="sm" onClick={() => navigate('/login')}>Sign in</Button>
+
+              
             </>
+
           )}
         </Flex>
       </Flex>

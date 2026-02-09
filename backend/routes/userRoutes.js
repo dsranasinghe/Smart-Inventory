@@ -1,22 +1,102 @@
-import express from 'express';
-import { register, login, getAllUsers , getUserById , deleteUser } from '../controllers/userController.js';
-import { authenticate, isAdmin } from '../middleware/authMddleware.js';
-
+import express from "express";
+import {
+  register,
+  login,
+  getAllUsers,
+  getUserById,
+  deleteUser,
+  getSuppliers,
+  getSupplierProfile,
+  createSupplierProfile,
+  registerSupplier,
+  getSupplierByUserId,
+} from "../controllers/userController.js";
+import { authenticate, isAdminOrSelf } from "../middleware/authMddleware.js";
+import {
+  addItem,
+  updateItem,
+  deleteItem,
+  getSupplierItems,
+} from "../controllers/supplierController.js";
+import {
+  createOrder,
+  getManagerOrders,
+  getSupplierOrders,
+  updateOrderStatus,
+  testManager,
+  updatePaymentStatus, 
+  getOrderById,
+} from "../controllers/orderController.js";
+import { getDashboardData, getLowStockItems, getRecentOrders, getRecentTransactions } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
 // Register a new user
-router.post('/register', authenticate, isAdmin, register);
+router.post("/register", authenticate, isAdminOrSelf, register);
 
 // Login user
-router.post('/login', login);
+router.post("/login", login);
 
 // Get all users (admin only)
-router.get('/users', authenticate, isAdmin, getAllUsers);
+router.get("/users", authenticate, isAdminOrSelf, getAllUsers);
 
 // Get a single user by ID (admin only)
-router.get('/users/:userId', authenticate, isAdmin, getUserById);
+router.get("/users/:userId", authenticate, isAdminOrSelf, getUserById);
 
-router.delete('/api/users/:id', authenticate, isAdmin, deleteUser);
+router.delete("/api/users/:id", authenticate, isAdminOrSelf, deleteUser);
 
+// Get all suppliers
+router.get("/suppliers", authenticate, getSuppliers);
+
+router.post(
+  "/suppliers/register",
+  authenticate,
+  isAdminOrSelf,
+  registerSupplier
+);
+
+router.post(
+  "/suppliers/:userId",
+  authenticate,
+  isAdminOrSelf,
+  createSupplierProfile
+);
+// Get supplier profile
+router.get("/suppliers/:userId/profile", authenticate, getSupplierProfile);
+router.get("/suppliers/user/:userId", authenticate, getSupplierByUserId);
+
+// New supplier item routes
+router.get("/suppliers/:userId/items", authenticate, getSupplierItems);
+
+router.post("/suppliers/:userId/items", authenticate, isAdminOrSelf, addItem);
+router.put(
+  "/suppliers/:userId/items/:itemId",
+  authenticate,
+  isAdminOrSelf,
+  updateItem
+);
+router.delete(
+  "/suppliers/:userId/items/:itemId",
+  authenticate,
+  isAdminOrSelf,
+  deleteItem
+);
+
+// Order routes
+router.post("/orders", authenticate, createOrder);
+router.get("/orders", authenticate, getManagerOrders);
+router.get("/orders/supplier/:userId", authenticate, getSupplierOrders);
+router.put("/orders/:orderId/status", authenticate, updateOrderStatus);
+router.patch("/orders/:id/payment-status", authenticate, updatePaymentStatus);
+router.get("/orders/:orderId", authenticate, getOrderById);
+
+
+
+router.get("/test-manager", testManager);
+
+// Add these routes to your backend
+router.get('/dashboard', authenticate, getDashboardData);
+router.get('/items/low-stock', authenticate, getLowStockItems);
+router.get('/orders/recent', authenticate, getRecentOrders);
+router.get('/transactions/recent', authenticate, getRecentTransactions);
 export default router;

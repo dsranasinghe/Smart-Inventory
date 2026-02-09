@@ -18,9 +18,9 @@ export const authenticate = (req, res, next) => {
 };
 
 // Middleware to check if the user is an admin
-export const isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied. Admins only.' });
+export const isAdminOrSelf = (req, res, next) => {
+  if (req.user.role === 'admin' || req.user.id == req.params.userId) {  // loose equality works
+    return next();
   }
-  next();
+  return res.status(403).json({ message: 'Access denied' });
 };
